@@ -157,7 +157,7 @@ int readPositionF(int Track, int noise) {
     }
   }
   if (!online) {
-    if (last_value < (TrackLineCH - 1) * 1000 / 2) return setsensortracklineL;
+    if (last_value < (TrackLineCH - 1) * 1000 / 2) return setsensortracklineL * 1000;
     else return setsensortracklineR * 1000;
   }
   last_value = avg / sum;
@@ -179,7 +179,7 @@ int readPositionB(int Track, int noise) {
     }
   }
   if (!online) {
-     if (last_value < (TrackLineCH - 1) * 1000 / 2) return setsensortracklineL;
+     if (last_value < (TrackLineCH - 1) * 1000 / 2) return setsensortracklineL * 1000;
     else return setsensortracklineR * 1000;
   }
   last_value = avg / sum;
@@ -341,14 +341,14 @@ void FFtimer(int baseSpeed, int totalTime) {
   BaseSpeed = baseSpeed;
   InitialSpeed();
   unsigned long endTime = millis() + totalTime;
-  while (millis() <= endTime) PIDF(LeftBaseSpeed,RightBaseSpeed, PID_KP, PID_KD);
+  while (millis() <= endTime) PIDF(LeftBaseSpeed,RightBaseSpeed, PID_KP_Front, PID_KD_Front);
 }
 
 void BBtimer(int baseSpeed, int totalTime) {
   BaseSpeed = baseSpeed;
   InitialSpeed();
   unsigned long endTime = millis() + totalTime;
-  while (millis() <= endTime) PIDB(LeftBaseSpeed,RightBaseSpeed, PID_KP, PID_KD);
+  while (millis() <= endTime) PIDB(LeftBaseSpeed,RightBaseSpeed, PID_KP_Back, PID_KD_Back);
 }
 
 
