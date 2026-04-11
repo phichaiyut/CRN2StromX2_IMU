@@ -34,10 +34,14 @@ float angleRead() {
   return adjusted;
 }
 
-void SetRobotAngle() {
-  current_degree = angleRead();
-}
+// void SetRobotAngle() {
+//   current_degree = angleRead();
+// }
 
+void SetRobotAngle() {
+  float angle = angleRead();   // ค่า Euler angle จาก BNO055
+  current_degree = current_degree * 0.8 + angle * 0.2;
+}
 /* ---------- spin / turn ---------- */
 
 void spinDegree(int relative_degree) {
