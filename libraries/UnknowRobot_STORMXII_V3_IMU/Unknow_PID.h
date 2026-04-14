@@ -467,12 +467,12 @@ void BBtimer(int baseSpeed, int totalTime) {
 void ToCenter() {
   BZon();
    if(line_centor == 0){
-      robot.Motor(tctL, tctR);
+      Motor(tctL, tctR);
       delay(20);
     }
     else{
       for( int i = 0; i <= 20; i++){
-        PIDF_none(tctL,tctR,kp_slow1,kd_slow1);
+        PIDF_none(tctL,tctR,slow_kp,slow_kd);
       } 
     }
   // Motor(tctL, tctR);
@@ -499,12 +499,12 @@ void ToCenter() {
 void ToCenterL() {
   BZon();
    if(line_centor == 0){
-      robot.Motor(tctL, tctR);
+      Motor(tctL, tctR);
       delay(20);
     }
     else{
       for( int i = 0; i <= 20; i++){
-        PIDF_none(tctL,tctR,kp_slow1,kd_slow1);
+        PIDF_none(tctL,tctR,slow_kp,slow_kd);
       } 
     }
   // Motor(tctL, tctR);
@@ -531,12 +531,12 @@ void ToCenterL() {
 void ToCenterR() {
 BZon();
  if(line_centor == 0){
-      robot.Motor(tctL, tctR);
+      Motor(tctL, tctR);
       delay(20);
     }
     else{
       for( int i = 0; i <= 20; i++){
-        PIDF_none(tctL,tctR,kp_slow1,kd_slow1);
+        PIDF_none(tctL,tctR,slow_kp,slow_kd);
       } 
     }
   // Motor(tctL, tctR);
@@ -563,12 +563,12 @@ BZon();
 void BackCenter() {
   BZon();
   if(line_centor == 0){
-      robot.Motor(-bctL, -bctR);
+      Motor(-bctL, -bctR);
       delay(20);
     }
     else{
       for( int i = 0; i <= 20; i++){
-        PIDB_none(bctL,bctR,kp_slow1,kd_slow1);
+        PIDB_none(bctL,bctR,slow_kp,slow_kd);
       } 
     }
   // Motor(-bctL, -bctR);
