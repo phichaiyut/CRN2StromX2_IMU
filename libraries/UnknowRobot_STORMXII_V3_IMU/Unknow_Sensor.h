@@ -142,8 +142,8 @@ void ReadCalibrateF() {
       x = map(F[i], minValueF[i], maxValueF[i], 0, 1000);
     if (x < 40)   x = 0;
     if (x > 980)  x = 1000;
-    if (x < 0)    x = 0;
-    if (x > 1000) x = 1000;
+    // if (x < 0)    x = 0;
+    // if (x > 1000) x = 1000;
     F[i] = x;
   }
 }
@@ -158,8 +158,8 @@ void ReadCalibrateC() {
       x = map(C[i], minValueC[i], maxValueC[i], 1000, 0);
     if (x < 40)   x = 0;
     if (x > 980)  x = 1000;
-    if (x < 0)    x = 0;
-    if (x > 1000) x = 1000;
+    // if (x < 0)    x = 0;
+    // if (x > 1000) x = 1000;
     C[i] = x;
   }
 }
@@ -174,8 +174,8 @@ void ReadCalibrateB() {
       x = map(B[i], minValueB[i], maxValueB[i], 0, 1000);
     if (x < 40)   x = 0;
     if (x > 980)  x = 1000;
-    if (x < 0)    x = 0;
-    if (x > 1000) x = 1000;
+    // if (x < 0)    x = 0;
+    // if (x > 1000) x = 1000;
     B[i] = x;
   }
 }
@@ -306,5 +306,38 @@ void SerialCalibrate_CenterSensor() {
     delay(100);
   }
 }
+
+
+void SerialCalibrate_AllSensor() {
+  while (1) {
+    ReadSensor();
+
+    // ---------- FRONT ----------
+    Serial.print("F: ");
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(F[i]);
+      Serial.print("\t");
+    }
+
+    // ---------- BACK ----------
+    Serial.print(" | B: ");
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(B[i]);
+      Serial.print("\t");
+    }
+
+    // ---------- CENTER ----------
+    Serial.print(" | C: ");
+    for (int i = 0; i < 2; i++) {
+      Serial.print(C[i]);
+      Serial.print("\t");
+    }
+
+    Serial.println();
+    delay(100);
+  }
+}
+
+
 
 #endif

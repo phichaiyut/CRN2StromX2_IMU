@@ -57,6 +57,14 @@ void Stop(int StopDelay) {
   delay(StopDelay);
 }
 
+void TestMotor(){
+  Move(20, 0, 300);  //สั่งมอเตอร์ซ้าย
+  MotorStop();       // หยุดการทำงานมอเตอร์
+  delay(500);        // หน่วงเวลา 0.5 วินาที
+  Move(0, 20, 300);  //สั่งมอเตอร์ขวา
+  MotorStop();       // หยุดการทำงานมอเตอร์
+}
+
 int BaseSpeed, LeftBaseSpeed, RightBaseSpeed, BackLeftBaseSpeed, BackRightBaseSpeed;
 float PID_KP_Front, PID_KD_Front;
 float PID_KP_Back, PID_KD_Back;

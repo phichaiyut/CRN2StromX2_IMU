@@ -46,7 +46,7 @@ void SetRobotAngle() {
     delay(6);
   }
 
-  current_degree = sum / 10.0;
+  current_degree = sum / 20.0;
 }
 
 /* ---------- spin / turn ---------- */
@@ -483,3 +483,132 @@ void TurnLBG(int spd, int Angle) {
 void TurnRBG(int spd, int Angle) {
   turnDegreeB(spd, -abs(Angle));
 }
+
+
+
+void fw_gyro(int spd, float kp,  float distance, int offset) 
+{     BaseSpeed = spd;
+  InitialSpeed();
+    int target_speed = min(LeftBaseSpeed, RightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
+
+   SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+
+
+    float yaw_offset = angleRead();
+    float _integral = 0;
+    float _prevErr = 0;
+    unsigned long prevT = millis();   
+
+    int maxLeftSpeed = LeftBaseSpeed;
+    int maxRightSpeed = RightBaseSpeed; 
+
+    while (1) 
+    {
+      
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+        float yaw =  yaw_offset - angleRead();
+        float err = yaw;
+
+        _integral += err * dt;
+        float deriv = (err - _prevErr) / dt;
+        _prevErr = err;
+        float corr = kp * err + 0.0001 * _integral + 0.05 * deriv;
+
+        int leftSpeed  = constrain(LeftBaseSpeed + corr, -100, 100);
+        int rightSpeed = constrain(RightBaseSpeed - corr, -100, 100);
+        Motor(leftSpeed, rightSpeed);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        delayMicroseconds(80);
+    }
+
+    // soft stop
+    if(offset >0)
+      {
+        Motor(-15, -15); delay(offset);
+        Motor(-1, -1);   delay(10);
+      }
+    else{Motor(0, 0);delay(5);}
+    
+}
+
+void bw_gyro(int spl, float kp,  float distance, int offset) 
+ {     
+    BaseSpeed = spd;
+  InitialSpeed();
+    int target_speed = min(BackLeftBaseSpeed, BackRightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // ใช้ค่าที่คาลิเบรตจาก fw()
+
+    SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+
+
+    float yaw_offset = angleRead();
+    float _integral = 0;
+    float _prevErr = 0;
+    unsigned long prevT = millis();   
+
+    int maxLeftSpeed = spl;
+    int maxRightSpeed = spr; 
+
+    while (1) 
+    {
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+        float yaw =  yaw_offset - angleRead();
+        float err = -yaw;
+
+        _integral += err * dt;
+        float deriv = (err - _prevErr) / dt;
+        _prevErr = err;
+        float corr = kp * err + 0.0001 * _integral + 0.05 * deriv;
+
+        // สปีดถอยหลัง
+        int leftSpeed  = constrain(-(BackLeftBaseSpeed + corr), -100, 100);
+        int rightSpeed = constrain(-(BackRightBaseSpeed - corr), -100, 100);
+        Motor(leftSpeed, rightSpeed);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        delayMicroseconds(80);
+    }
+
+
+
+    if(offset >0)
+      {
+        Motor(-15, -15); delay(offset);
+        Motor(1, 1);   delay(10);
+      }
+    else{Motor(0, 0);delay(5);}
+  }
