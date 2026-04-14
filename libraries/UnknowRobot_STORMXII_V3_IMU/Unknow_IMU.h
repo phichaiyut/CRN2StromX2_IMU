@@ -46,7 +46,7 @@ void SetRobotAngle() {
     delay(6);
   }
 
-  current_degree = sum / 20.0;
+  current_degree = sum / 10.0;
 }
 
 /* ---------- spin / turn ---------- */
