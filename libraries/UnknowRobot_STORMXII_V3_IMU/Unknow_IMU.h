@@ -37,20 +37,18 @@ float angleRead() {
 // void SetRobotAngle() {
 //   current_degree = angleRead();
 // }
+
 void SetRobotAngle() {
   float sum = 0;
 
   for (int i = 0; i < 10; i++) {
     sum += angleRead();
-    delayMicroseconds(200); // BNO055 ~100Hz
+    delay(6);
   }
 
-  current_degree = sum / 10.0;
+  current_degree = sum / 20.0;
 }
-// void SetRobotAngle() {
-//   float angle = angleRead();   // ค่า Euler angle จาก BNO055
-//   current_degree = current_degree * 0.8 + angle * 0.2;
-// }
+
 /* ---------- spin / turn ---------- */
 
 void spinDegree(int relative_degree) {
@@ -348,3 +346,140 @@ void BBBG(int Speed, char select) {
 
 
 
+/************* SPIN FAST → FINE *************/
+void spinDegree(int speed, int relative_degree) {
+  SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+  int min_speed = 5;
+  int max_speed = speed;
+  float kp = 0.9;
+  float kd = 0.15;
+  float small_angle_threshold = 25;
+  float stop_threshold = 1.0;
+  float previous_error = 0;
+  float target_degree = current_degree + relative_degree;
+  if (target_degree > 180) target_degree -= 360;
+  if (target_degree < -180) target_degree += 360;
+  current_degree = target_degree;
+  while (1) {
+    float current_angle = angleRead();
+    float error = target_degree - current_angle;
+    if (error > 180) error -= 360;
+    else if (error < -180) error += 360;
+    int pd_value = (kp * error) + (kd * (error - previous_error));
+    if (pd_value > max_speed) pd_value = max_speed;
+    else if (pd_value < -max_speed) pd_value = -max_speed;
+    if (error > stop_threshold && error < small_angle_threshold) {
+      Motor(min_speed, -min_speed);
+    } else if (error < -stop_threshold && error > -small_angle_threshold) {
+      Motor(-min_speed, min_speed);
+    } else if (error >= -stop_threshold && error <= stop_threshold) {
+      MotorStop();
+      break;
+    } else {
+      Motor(pd_value, -pd_value);
+    }
+    previous_error = error;
+  }
+  Stop(60);
+}
+
+
+void SpinLG(int spd, int Angle) {
+  spinDegree(spd, -abs(Angle));
+}
+void SpinRG(int spd, int Angle) {
+  spinDegree(spd, abs(Angle));
+}
+
+
+
+void turnDegree(int speed,int relative_degree) {
+  SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+  int min_speed = 10;
+  int max_speed = speed;
+  float kp = 0.9;
+  float kd = 0.15;
+  float small_angle_threshold = 25;
+  float stop_threshold = 1.0;
+  float previous_error = 0;
+  float target_degree = current_degree + relative_degree;
+  if (target_degree > 180) target_degree -= 360;
+  if (target_degree < -180) target_degree += 360;
+  current_degree = target_degree;
+  while (1) {
+    float current_angle = angleRead();
+    float error = target_degree - current_angle;
+    if (error > 180) error -= 360;
+    else if (error < -180) error += 360;
+    int pd_value = (kp * error) + (kd * (error - previous_error));
+    if (pd_value > max_speed) pd_value = max_speed;
+    else if (pd_value < -max_speed) pd_value = -max_speed;
+    if (error > stop_threshold && error < small_angle_threshold) {
+      Motor(min_speed, 0);
+    } else if (error < -stop_threshold && error > -small_angle_threshold) {
+      Motor(0, min_speed);
+    } else if (error >= -stop_threshold && error <= stop_threshold) {
+      MotorStop();
+      break;
+    } else {
+      if (error <= 0) Motor(5, -pd_value);
+      else if (error > 0) Motor(pd_value, 5);
+    }
+    previous_error = error;
+  }
+  Stop(60);
+}
+
+
+void TurnLG(int spd, int Angle) {
+  turnDegree(spd, -abs(Angle));
+}
+void TurnRG(int spd ,int Angle) {
+  turnDegree(spd, abs(Angle));
+}
+
+
+void turnDegreeB(int speed,int relative_degree) {
+  SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+  int min_speed = 10;
+  int max_speed = speed;
+  float kp = 0.9;
+  float kd = 0.15;
+  float small_angle_threshold = 25;
+  float stop_threshold = 1.0;
+  float previous_error = 0;
+  float target_degree = current_degree + relative_degree;
+  if (target_degree > 180) target_degree -= 360;
+  if (target_degree < -180) target_degree += 360;
+  current_degree = target_degree;
+  while (1) {
+    float current_angle = angleRead();
+    float error = target_degree - current_angle;
+    if (error > 180) error -= 360;
+    else if (error < -180) error += 360;
+    int pd_value = (kp * error) + (kd * (error - previous_error));
+    if (pd_value > max_speed) pd_value = max_speed;
+    else if (pd_value < -max_speed) pd_value = -max_speed;
+    if (error > stop_threshold && error < small_angle_threshold) {
+      Motor(0, -min_speed);
+    } else if (error < -stop_threshold && error > -small_angle_threshold) {
+      Motor(-min_speed, 0);
+    } else if (error >= -stop_threshold && error <= stop_threshold) {
+      MotorStop();
+      break;
+    } else {
+      if (error <= 0) Motor(pd_value, 0);
+      else if (error > 0) Motor(0, -pd_value);
+    }
+    previous_error = error;
+  }
+  Stop(60);
+}
+
+
+void TurnLBG(int spd, int Angle) {
+  turnDegreeB(spd, abs(Angle));
+}
+void TurnRBG(int spd, int Angle) {
+  turnDegreeB(spd, -abs(Angle));
+}
