@@ -13,8 +13,8 @@ int tctL,tctR, bctL,bctR;
 int LTurnSpdL, LTurnSpdR, TurnDelayL;
 int RTurnSpdL, RTurnSpdR, TurnDelayR;
 int set_position = 7500;
-float slow_kp = 0.005,slow_kd = 0.05;
-
+float slow_kp = 0.014,slow_kd = 0.14;
+int line_centor = 0;
 
 int MaxSpeed = 100;
 int MinSpeed = -5;
@@ -84,6 +84,9 @@ void set_sensor_track_line(int L ,int R){
   setsensortracklineR = R;
 }
 
+void set_line_center(int x){
+  line_centor = x;
+}
 // ---------- Position Reading ----------
 
 // int readPositionF(int Track, int noise) {
@@ -246,7 +249,7 @@ int readPositionB_none(int Track, int noise) {
 
 void PIDF(int SpeedL,int SpeedR, float Kp, float Kd) {
   int Pos      = readPositionF(250, 50);
-  int Error    = Pos - ((TrackLineCH - 1) * 1000 / 2);
+  int Error    = Pos - set_position;
   int PID_Value = (Kp * Error) + (Kd * (Error - LastError_F));
   LastError_F  = Error;
   int LeftPower  = SpeedL + PID_Value;
@@ -292,7 +295,7 @@ void PIDF(int SpeedL,int SpeedR, float Kp, float Kd) {
 
 void PIDB(int SpeedL,int SpeedR, float Kp, float Kd) {
   int Pos      = readPositionB(250, 50);
-  int Error    = Pos - ((TrackLineCH - 1) * 1000 / 2);
+  int Error    = Pos - set_position;
   int PID_Value = (Kp * Error) + (Kd * (Error - LastError_B));
   LastError_B  = Error;
  int LeftPower  = SpeedL + PID_Value;
@@ -335,6 +338,113 @@ void PIDB(int SpeedL,int SpeedR, float Kp, float Kd) {
   Motor(-LeftPower, -RightPower);
 }
 
+
+void PIDF_none(int SpeedL,int SpeedR, float Kp, float Kd) {
+  int Pos;
+   ReadCalibrateF();
+  if (F[7] > Ref && F[8] > Ref) {
+    Pos = 7500;
+  } else {
+    Pos = readPositionF_none(250, 50);
+  }
+  // int Pos      = readPositionF_none(250, 50);
+  int Error    = Pos - set_position;
+  int PID_Value = (Kp * Error) + (Kd * (Error - LastError_F));
+  LastError_F  = Error;
+  int LeftPower  = SpeedL + PID_Value;
+  int RightPower = SpeedR - PID_Value;
+  if (LeftPower  > 100) LeftPower  = 100;
+  if (LeftPower  < -100)   LeftPower  = -100;
+  if (RightPower > 100) RightPower = 100;
+  if (RightPower < -100)   RightPower = -100;
+  // switch (ModePidStatus) {
+  //   case 0:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < 0) LeftPower = MinSpeed;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < 0) RightPower = MinSpeed;
+  //     break;
+  //   case 1:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < MinSpeed) LeftPower = MinSpeed;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < MinSpeed) RightPower = MinSpeed;
+  //     break;
+  //   case 2:
+  //     if (LeftPower > SpeedL) LeftPower = SpeedL;
+  //     if (LeftPower < -SpeedL) LeftPower = -SpeedL;
+  //     if (RightPower > SpeedR) RightPower = SpeedR;
+  //     if (RightPower < -SpeedR) RightPower = -SpeedR;
+  //     break;
+  //   case 3:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < 0) LeftPower = -BaseSpeed;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < 0) RightPower = -BaseSpeed;
+  //     break;
+  //   default:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < 0) LeftPower = 0;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < 0) RightPower = 0;
+  // }
+
+  Motor(LeftPower, RightPower);
+}
+
+void PIDB_none(int SpeedL,int SpeedR, float Kp, float Kd) {
+  int Pos;
+   ReadCalibrateB();
+  if (B[7] > Ref && B[8] > Ref) {
+    Pos = 7500;
+  } else {
+    Pos = readPositionB_none(250, 50);
+  }
+  // int Pos      = readPositionB_none(250, 50);
+  int Error    = Pos - set_position;
+  int PID_Value = (Kp * Error) + (Kd * (Error - LastError_B));
+  LastError_B  = Error;
+ int LeftPower  = SpeedL + PID_Value;
+  int RightPower = SpeedR - PID_Value;
+  if (LeftPower  > 100) LeftPower  = 100;
+  if (LeftPower  < -100)   LeftPower  = -100;
+  if (RightPower > 100) RightPower = 100;
+  if (RightPower < -100)   RightPower = -100;
+  // switch (ModePidStatus) {
+  //   case 0:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < 0) LeftPower = MinSpeed;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < 0) RightPower = MinSpeed;
+  //     break;
+  //   case 1:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < MinSpeed) LeftPower = MinSpeed;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < MinSpeed) RightPower = MinSpeed;
+  //     break;
+  //   case 2:
+  //     if (LeftPower > SpeedL) LeftPower = SpeedL;
+  //     if (LeftPower < -SpeedL) LeftPower = -SpeedL;
+  //     if (RightPower > SpeedR) RightPower = SpeedR;
+  //     if (RightPower < -SpeedR) RightPower = -SpeedR;
+  //     break;
+  //   case 3:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < 0) LeftPower = -BaseSpeed;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < 0) RightPower = -BaseSpeed;
+  //     break;
+  //   default:
+  //     if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
+  //     if (LeftPower < 0) LeftPower = 0;
+  //     if (RightPower > MaxSpeed) RightPower = MaxSpeed;
+  //     if (RightPower < 0) RightPower = 0;
+  // }
+  Motor(-LeftPower, -RightPower);
+}
+
+
 // ---------- Timed Motion ----------
 
 void FFtimer(int baseSpeed, int totalTime) {
@@ -356,10 +466,25 @@ void BBtimer(int baseSpeed, int totalTime) {
 
 void ToCenter() {
   BZon();
-  Motor(tctL, tctR);
-  delay(20);
+   if(line_centor == 0){
+      robot.Motor(tctL, tctR);
+      delay(20);
+    }
+    else{
+      for( int i = 0; i <= 20; i++){
+        PIDF_none(tctL,tctR,kp_slow1,kd_slow1);
+      } 
+    }
+  // Motor(tctL, tctR);
+  // delay(20);
   while (1) {
-    Motor(tctL, tctR);
+    if(line_centor == 0){
+      Motor(tctL, tctR);
+    }
+    else{
+      PIDF_none(tctL,tctR,slow_kp,slow_kd);
+    }
+    // Motor(tctL, tctR);
     ReadSensor();
     if (C[CCL] >= RefC || C[CCR] >= RefC) {
       Motor(-tctL, -tctR);
@@ -373,10 +498,25 @@ void ToCenter() {
 
 void ToCenterL() {
   BZon();
-  Motor(tctL, tctR);
-  delay(20);
+   if(line_centor == 0){
+      robot.Motor(tctL, tctR);
+      delay(20);
+    }
+    else{
+      for( int i = 0; i <= 20; i++){
+        PIDF_none(tctL,tctR,kp_slow1,kd_slow1);
+      } 
+    }
+  // Motor(tctL, tctR);
+  // delay(20);
   while (1) {
-    Motor(tctL, tctR);
+    // Motor(tctL, tctR);
+    if(line_centor == 0){
+      Motor(tctL, tctR);
+    }
+    else{
+      PIDF_none(tctL,tctR,slow_kp,slow_kd);
+    }
     ReadSensor();
     if (C[CCL] >= RefC) {
       Motor(-tctL, -tctR);
@@ -390,10 +530,25 @@ void ToCenterL() {
 
 void ToCenterR() {
 BZon();
-  Motor(tctL, tctR);
-  delay(20);
+ if(line_centor == 0){
+      robot.Motor(tctL, tctR);
+      delay(20);
+    }
+    else{
+      for( int i = 0; i <= 20; i++){
+        PIDF_none(tctL,tctR,kp_slow1,kd_slow1);
+      } 
+    }
+  // Motor(tctL, tctR);
+  // delay(20);
   while (1) {
-    Motor(tctL, tctR);
+    // Motor(tctL, tctR);
+    if(line_centor == 0){
+      Motor(tctL, tctR);
+    }
+    else{
+      PIDF_none(tctL,tctR,slow_kp,slow_kd);
+    }
     ReadSensor();
     if (C[CCR] >= RefC) {
       Motor(-tctL, -tctR);
@@ -407,10 +562,25 @@ BZon();
 
 void BackCenter() {
   BZon();
-  Motor(-bctL, -bctR);
-  delay(20);
+  if(line_centor == 0){
+      robot.Motor(-bctL, -bctR);
+      delay(20);
+    }
+    else{
+      for( int i = 0; i <= 20; i++){
+        PIDB_none(bctL,bctR,kp_slow1,kd_slow1);
+      } 
+    }
+  // Motor(-bctL, -bctR);
+  // delay(20);
   while (1) {
-    Motor(-bctL, -bctR);
+    // Motor(-bctL, -bctR);
+    if(line_centor == 0){
+      Motor(-bctL, -bctR);
+    }
+    else{
+      PIDB_none(bctL,bctR,slow_kp,slow_kd);
+    }
     ReadSensor();
     if (C[CCL] >= RefC || C[CCR] >= RefC) {
       Motor(bctL, bctR);
