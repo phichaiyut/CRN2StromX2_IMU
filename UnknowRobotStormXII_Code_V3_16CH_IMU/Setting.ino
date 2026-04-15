@@ -8,7 +8,7 @@ void setup_robot() {
  // set_line_center(0);  // เดินธรรมดา เข้ากลางหุ่น
   set_line_center(1);  // เดินตามเส้น เข้ากลางหุ่น
   
-  SetSlowKpKd(0.006, 0.12);
+  SetSlowKpKd(0.014, 0.14);
   // SerialCalibrate_AllSensor(); //โชว์ค่าคาลิเบท เซนเซอร์ทั้งหมด
 
 

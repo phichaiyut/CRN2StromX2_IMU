@@ -62,6 +62,8 @@ void setup() {
   // SerialCalibrate_FrontSensor();  // Serial Monitor เซนเซอร์หน้า คาริเบทแล้ว
   // SerialCalibrate_BackSensor();    // Serial Monitor เซนเซอร์หลัง คาริเบทแล้ว
   // SerialCalibrate_CenterSensor();  // Serial Monitor เซนเซอร์กลาง คาริเบทแล้ว
+
+  // SerialCalibrate_AllSensor(); //โชว์ค่าคาลิเบท เซนเซอร์ทั้งหมด
   ////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////
 
