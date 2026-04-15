@@ -458,9 +458,97 @@ void BBtimer(int baseSpeed, int totalTime) {
   BaseSpeed = baseSpeed;
   InitialSpeed();
   unsigned long endTime = millis() + totalTime;
-  while (millis() <= endTime) PIDB(LeftBaseSpeed,RightBaseSpeed, PID_KP_Back, PID_KD_Back);
+  while (millis() <= endTime) PIDB(BackLeftBaseSpeed,BackRightBaseSpeed, PID_KP_Back, PID_KD_Back);
 }
 
+
+void FFcm(int Speed, float distance) {
+   BaseSpeed = Speed;
+  InitialSpeed();
+    int target_speed = min(LeftBaseSpeed, RightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
+
+
+ unsigned long prevT = millis(); 
+    while (1) 
+    {
+      
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+       PIDF(LeftBaseSpeed,RightBaseSpeed, PID_KP_Front , PID_KD_Front );
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        //delayMicroseconds(80);
+    }
+
+    // soft stop
+    // if(offset >0)
+    //   {
+    //     Motor(-15, -15); delay(offset);
+    //     Motor(-1, -1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+    //  TrackSelectF(Speed, select);
+}
+
+void BBcm(int Speed, float distance) {
+   BaseSpeed = Speed;
+  InitialSpeed();
+    int target_speed = min(BackLeftBaseSpeed, BackRightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
+
+
+ unsigned long prevT = millis(); 
+    while (1) 
+    {
+      
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+       PIDB(BackLeftBaseSpeed,BackRightBaseSpeed, PID_KP_Back , PID_KD_Back);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        //delayMicroseconds(80);
+    }
+
+    // soft stop
+    // if(offset >0)
+    //   {
+    //     Motor(-15, -15); delay(offset);
+    //     Motor(-1, -1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+    // TrackSelectB(Speed, select);
+}
 
 // ---------- ToCenter / BackCenter ----------
 
@@ -961,6 +1049,94 @@ void BBtimer(int Speed, int totalTime,char select) {
   unsigned long endTime = millis() + totalTime;
   while (millis() <= endTime) PIDB(BackLeftBaseSpeed,BackRightBaseSpeed, PID_KP_Back, PID_KD_Back);
   TrackSelectB(Speed, select);
+}
+
+void FFcm(int Speed, float distance,char select) {
+   BaseSpeed = Speed;
+  InitialSpeed();
+    int target_speed = min(LeftBaseSpeed, RightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
+
+
+ unsigned long prevT = millis(); 
+    while (1) 
+    {
+      
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+       PIDF(LeftBaseSpeed,RightBaseSpeed, PID_KP_Front , PID_KD_Front );
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        //delayMicroseconds(80);
+    }
+
+    // soft stop
+    // if(offset >0)
+    //   {
+    //     Motor(-15, -15); delay(offset);
+    //     Motor(-1, -1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+     TrackSelectF(Speed, select);
+}
+
+void BBcm(int Speed, float distance,char select) {
+   BaseSpeed = Speed;
+  InitialSpeed();
+    int target_speed = min(BackLeftBaseSpeed, BackRightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
+
+
+ unsigned long prevT = millis(); 
+    while (1) 
+    {
+      
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+       PIDB(BackLeftBaseSpeed,BackRightBaseSpeed, PID_KP_Back , PID_KD_Back);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        //delayMicroseconds(80);
+    }
+
+    // soft stop
+    // if(offset >0)
+    //   {
+    //     Motor(-15, -15); delay(offset);
+    //     Motor(-1, -1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+     TrackSelectB(Speed, select);
 }
 // ---------- FF / BB Patterns ----------
 

@@ -46,7 +46,7 @@ void SetRobotAngle() {
     delay(6);
   }
 
-  current_degree = sum / 20.0;
+  current_degree = sum / 10.0;
 }
 
 /* ---------- spin / turn ---------- */
@@ -184,8 +184,10 @@ void TurnRBG(int Angle) {
 /* ---------- gyro-guided straight move ---------- */
 float kpG = 1.2;
 float kdG = 1.5;
+// float kdG = 10;
 float kpGB = 1.2;
 float kdGB = 1.5;
+// float kdGB = 10;
 
 
 void RunG(int Speed) {
@@ -209,7 +211,7 @@ void RunGB(int Speed) {
   float error = current_degree - angleRead();
   if (error > 180) error -= 360;
   else if (error < -180) error += 360;
-  float derivative = error - previous_errorG;
+  float derivative = error - previous_errorGB;
   int pd_value = (error * kpGB  ) + (derivative * kdGB);
   int leftPow = Speed - pd_value;
   int rightPow = Speed + pd_value;
@@ -220,6 +222,7 @@ void RunGB(int Speed) {
   Motor(-leftPow, -rightPow);
   previous_errorGB = error;
 }
+
 
 
 void FFtimerG(int Speed, int totalTime) {
@@ -344,7 +347,24 @@ void BBBG(int Speed, char select) {
   TrackSelectGB(Speed,select);
 }
 
+void FFtimerG(int Speed, int totalTime, char select) {
+  SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+  unsigned long endTime = millis() + totalTime;
+  while (millis() <= endTime) {
+    RunG(Speed);
+  }
+  TrackSelectG(Speed,select);
+}
 
+
+void BBtimerG(int Speed, int totalTime, char select) {
+  SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+  unsigned long endTime = millis() + totalTime;
+  while (millis() <= endTime) {
+    RunGB(Speed);
+  }
+  TrackSelectGB(Speed,select);
+}
 
 /************* SPIN FAST → FINE *************/
 void spinDegree(int speed, int relative_degree) {
@@ -496,16 +516,7 @@ void fw_gyro(int spd, float kp,  float distance, int offset)
     float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
 
    SetRobotAngle(); // เซ็ตค่าปัจจุบัน
-
-
-    float yaw_offset = angleRead();
-    float _integral = 0;
-    float _prevErr = 0;
-    unsigned long prevT = millis();   
-
-    int maxLeftSpeed = LeftBaseSpeed;
-    int maxRightSpeed = RightBaseSpeed; 
-
+ unsigned long prevT = millis(); 
     while (1) 
     {
       
@@ -514,17 +525,7 @@ void fw_gyro(int spd, float kp,  float distance, int offset)
         if (dt <= 0) dt = 0.001; 
         prevT = now;
 
-        float yaw =  yaw_offset - angleRead();
-        float err = yaw;
-
-        _integral += err * dt;
-        float deriv = (err - _prevErr) / dt;
-        _prevErr = err;
-        float corr = kp * err + 0.0001 * _integral + 0.05 * deriv;
-
-        int leftSpeed  = constrain(LeftBaseSpeed + corr, -100, 100);
-        int rightSpeed = constrain(RightBaseSpeed - corr, -100, 100);
-        Motor(leftSpeed, rightSpeed);
+       RunG(spd);
 
         if (distance > 0) 
         {
@@ -536,7 +537,7 @@ void fw_gyro(int spd, float kp,  float distance, int offset)
             if (traveled_distance >= distance) break;
         }
 
-        delayMicroseconds(80);
+        //delayMicroseconds(80);
     }
 
     // soft stop
@@ -549,7 +550,7 @@ void fw_gyro(int spd, float kp,  float distance, int offset)
     
 }
 
-void bw_gyro(int spl, float kp,  float distance, int offset) 
+void bw_gyro(int spd, float kp,  float distance, int offset) 
  {     
     BaseSpeed = spd;
   InitialSpeed();
@@ -562,13 +563,9 @@ void bw_gyro(int spl, float kp,  float distance, int offset)
     SetRobotAngle(); // เซ็ตค่าปัจจุบัน
 
 
-    float yaw_offset = angleRead();
-    float _integral = 0;
-    float _prevErr = 0;
+   
     unsigned long prevT = millis();   
 
-    int maxLeftSpeed = spl;
-    int maxRightSpeed = spr; 
 
     while (1) 
     {
@@ -577,18 +574,7 @@ void bw_gyro(int spl, float kp,  float distance, int offset)
         if (dt <= 0) dt = 0.001; 
         prevT = now;
 
-        float yaw =  yaw_offset - angleRead();
-        float err = -yaw;
-
-        _integral += err * dt;
-        float deriv = (err - _prevErr) / dt;
-        _prevErr = err;
-        float corr = kp * err + 0.0001 * _integral + 0.05 * deriv;
-
-        // สปีดถอยหลัง
-        int leftSpeed  = constrain(-(BackLeftBaseSpeed + corr), -100, 100);
-        int rightSpeed = constrain(-(BackRightBaseSpeed - corr), -100, 100);
-        Motor(leftSpeed, rightSpeed);
+      RunGB(spd);
 
         if (distance > 0) 
         {
@@ -600,15 +586,390 @@ void bw_gyro(int spl, float kp,  float distance, int offset)
             if (traveled_distance >= distance) break;
         }
 
-        delayMicroseconds(80);
+        //delayMicroseconds(80);
     }
 
 
 
     if(offset >0)
       {
-        Motor(-15, -15); delay(offset);
-        Motor(1, 1);   delay(10);
+        Motor(15, 15); delay(offset);
+        Motor(-1, -1);   delay(10);
       }
     else{Motor(0, 0);delay(5);}
   }
+
+
+
+  void fw_gyro(int spd, float kp,  float distance,char select, int offset) 
+{     BaseSpeed = spd;
+  InitialSpeed();
+    int target_speed = min(LeftBaseSpeed, RightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
+
+   SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+ unsigned long prevT = millis(); 
+    while (1) 
+    {
+      
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+       RunG(spd);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        // delayMicroseconds(80);
+    }
+
+    // soft stop
+    // if(offset >0)
+    //   {
+    //     Motor(-15, -15); delay(offset);
+    //     Motor(-1, -1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+    TrackSelectG(spd,select);
+}
+
+void bw_gyro(int spd, float kp,  float distance,char select,  int offset) 
+ {     
+    BaseSpeed = spd;
+  InitialSpeed();
+    int target_speed = min(BackLeftBaseSpeed, BackRightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // ใช้ค่าที่คาลิเบรตจาก fw()
+
+    SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+
+
+    
+    unsigned long prevT = millis();   
+
+
+    while (1) 
+    {
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+      RunGB(spd);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        // delayMicroseconds(80);
+    }
+
+
+
+    // if(offset >0)
+    //   {
+    //     Motor(-15, -15); delay(offset);
+    //     Motor(1, 1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+    TrackSelectGB(spd,select);
+  }
+
+
+
+
+void FFcmGS(int Speed,  float distance) 
+{     BaseSpeed = Speed;
+  InitialSpeed();
+    int target_speed = min(LeftBaseSpeed, RightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
+
+   SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+ unsigned long prevT = millis(); 
+    while (1) 
+    {
+      
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+       RunG(Speed);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        //delayMicroseconds(80);
+    }
+
+    // soft stop
+    // if(offset >0)
+    //   {
+    //     Motor(-15, -15); delay(offset);
+    //     Motor(-1, -1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+    
+}
+
+
+void FFcmG(int Speed, float distance_cm){
+  BaseSpeed = Speed;
+  InitialSpeed();
+
+  if (distance_cm <= 0) {
+        Motor(0, 0);
+        return;
+    }
+
+    int base_speed = min(abs(LeftBaseSpeed), abs(RightBaseSpeed));
+   // bool is_forward = (LeftBaseSpeed >= 0 && RightBaseSpeed >= 0);
+
+
+    float traveled_distance = 0.0;
+    unsigned long last_time = millis();
+
+    // ====================== ค่าที่สามารถปรับได้ ======================
+    const float ACCEL_DISTANCE_CM = 20.0;
+    const float DECEL_DISTANCE_CM = 25.0;
+    const float MIN_SPEED = 10.0;
+
+    // ค่า speed_scale ที่คุณต้องการปรับได้ (ค่าดีฟอลต์ = 0.99)
+    float speed_scale = 0.99;        // ← คุณสามารถปรับตรงนี้ได้
+
+    // ตัดสินใจว่าใช้ Ramp หรือไม่
+    bool enableRamp = (distance_cm >= 30.0);
+
+    // ถ้าระยะสั้นมาก (< 30) ให้ปรับ speed_scale ได้ง่ายขึ้น
+    if (!enableRamp) {
+        speed_scale = 1.7;   // คุณสามารถเปลี่ยนเป็น 0.95, 0.98, 1.0 ได้ตามต้องการ
+    }
+ SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+    
+
+    while (true)
+    {
+        // คำนวณระยะทาง
+        unsigned long current_time = millis();
+        float delta_time = (current_time - last_time) / 1000.0;
+        traveled_distance += (base_speed * speed_scale) * delta_time;
+        last_time = current_time;
+
+        float remaining_cm = distance_cm - traveled_distance;
+
+        if (remaining_cm <= 0.7f) break;
+
+        // ====================== คำนวณ target_speed ======================
+        float target_speed = base_speed;
+
+        if (enableRamp)
+        {
+            if (traveled_distance < ACCEL_DISTANCE_CM) {
+                // เร่งช่วงแรก
+                target_speed = MIN_SPEED + (base_speed - MIN_SPEED) * (traveled_distance / ACCEL_DISTANCE_CM);
+            }
+            else if (remaining_cm < DECEL_DISTANCE_CM) {
+                // ชะลอช่วงสุดท้าย
+                target_speed = MIN_SPEED + (base_speed - MIN_SPEED) * (remaining_cm / DECEL_DISTANCE_CM);
+            }
+        }
+        // ถ้า enableRamp = false → ใช้ความเร็วคงที่ตลอดทาง
+          RunG(base_speed);
+        // ====================== คำนวณความเร็วซ้าย-ขวา ======================
+        
+    }
+
+    // ====================== Soft Stop ======================
+    // if (offset > 0) {
+    //     if (is_forward) {
+    //         Motor(-3, -2); delay(offset);
+    //     } else {
+    //         Motor(2, 3); delay(offset);
+    //     }
+    //     Motor(-1, -1); delay(10);
+    // } 
+    // else {
+    //     Motor(0, 0);
+    // }
+    
+    // Motor(1, 1);      // Pulse เล็กน้อยเพื่อหยุดตรงขึ้น
+    // delay(5);
+}
+
+
+void BBcmGS(int Speed,  float distance) 
+ {     
+    BaseSpeed = Speed;
+  InitialSpeed();
+    int target_speed = min(BackLeftBaseSpeed, BackRightBaseSpeed); 
+    float traveled_distance = 0;
+    unsigned long last_time = millis();
+    
+    float speed_scale = 1.5;  // ใช้ค่าที่คาลิเบรตจาก fw()
+
+    SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+    unsigned long prevT = millis();   
+
+
+    while (1) 
+    {
+        unsigned long now = millis();
+        float dt = (now - prevT) / 1000.0;
+        if (dt <= 0) dt = 0.001; 
+        prevT = now;
+
+      RunGB(Speed);
+
+        if (distance > 0) 
+        {
+            unsigned long current_time = millis();
+            float delta_time = (current_time - last_time) / 1000.0;
+            traveled_distance += (target_speed * speed_scale) * delta_time;
+            last_time = current_time;
+
+            if (traveled_distance >= distance) break;
+        }
+
+        //delayMicroseconds(80);
+    }
+
+
+
+    // if(offset >0)
+    //   {
+    //     Motor(15, 15); delay(offset);
+    //     Motor(-1, -1);   delay(10);
+    //   }
+    // else{Motor(0, 0);delay(5);}
+  }
+
+ void BBcmG(int Speed, float distance_cm)
+{
+    BaseSpeed = Speed;
+    InitialSpeed();
+    if (distance_cm <= 0) {
+        Motor(0, 0);
+        return;
+    }
+
+    int base_speed = min(abs(BackLeftBaseSpeed), abs(BackRightBaseSpeed));
+   
+
+    float traveled_distance = 0.0;
+    unsigned long last_time = millis();
+
+    float speed_scale = 0.99;                    // ค่าเริ่มต้นสำหรับถอยหลัง
+
+    const float ACCEL_DISTANCE_CM = 20.0;
+    const float DECEL_DISTANCE_CM = 25.0;
+    const float MIN_SPEED = 10.0;
+
+    // ตัดสินใจว่าใช้ Ramp หรือไม่
+    bool enableRamp = (distance_cm >= 30.0);
+
+    // ถ้าระยะสั้นมาก (< 30) → ไม่ใช้ Ramp + ปรับ speed_scale
+    if (!enableRamp) {
+        speed_scale = 1.5;     // คุณสามารถปรับตรงนี้ได้ (แนะนำ 0.92 - 0.97)
+    }
+  SetRobotAngle(); // เซ็ตค่าปัจจุบัน
+
+    while (true)
+    {
+        // คำนวณระยะทาง
+        unsigned long current_time = millis();
+        float delta_time = (current_time - last_time) / 1000.0;
+        traveled_distance += (base_speed * speed_scale) * delta_time;
+        last_time = current_time;
+
+        float remaining_cm = distance_cm - traveled_distance;
+
+        if (remaining_cm <= 0.8f) break;
+
+        // ====================== คำนวณความเร็ว ======================
+        float target_speed = base_speed;
+
+        if (enableRamp)   // ใช้ Ramp เฉพาะระยะยาว (>=30 cm)
+        {
+            if (traveled_distance < ACCEL_DISTANCE_CM) {
+                target_speed = MIN_SPEED + (base_speed - MIN_SPEED) * (traveled_distance / ACCEL_DISTANCE_CM);
+            }
+            else if (remaining_cm < DECEL_DISTANCE_CM) {
+                target_speed = MIN_SPEED + (base_speed - MIN_SPEED) * (remaining_cm / DECEL_DISTANCE_CM);
+            }
+        }
+        // ถ้า !enableRamp → ใช้ความเร็วคงที่ตลอดทาง (base_speed)
+
+        RunGB(base_speed);
+    }
+
+    // // ====================== Soft Stop ======================
+    // if (offset > 0) {
+    //     if (is_backward) {
+    //         // ถอยหลัง → เบรกด้วยการเดินหน้าเล็กน้อย
+    //         Motor(4, 4); delay(offset);
+    //     } else {
+    //         // เดินหน้า → เบรกด้วยการถอยหลัง
+    //         Motor(-4, -4); delay(offset);
+    //     }
+    //     Motor(0, 0); delay(10);
+    // } 
+    // else {
+    //     Motor(0, 0);
+    // }
+
+    // Motor(1, 1);
+    // delay(5);
+}
+
+  void FFcmGS(int Speed,  float distance_cm, char select) 
+{   
+    FFcmGS(Speed, distance_cm);
+    TrackSelectG(Speed,select);
+}
+
+void BBcmGS(int Speed,  float distance_cm, char select) 
+{     
+    BBcmGS(Speed, distance_cm);
+    TrackSelectGB(Speed,select);
+}
+  void FFcmG(int Speed,  float distance_cm, char select) 
+{   
+    FFcmG(Speed, distance_cm);
+    TrackSelectG(Speed,select);
+}
+
+void BBcmG(int Speed,  float distance_cm, char select) 
+{     
+    BBcmG(Speed, distance_cm);
+    TrackSelectGB(Speed,select);
+}
