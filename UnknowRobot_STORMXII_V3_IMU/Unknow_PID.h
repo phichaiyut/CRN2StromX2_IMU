@@ -1804,4 +1804,34 @@ void BBcmCirCleR(int Speed, int totalTime, char select) {
   TrackSelectB(Speed, select);
 }
 
+void SerialPositionF() {
+  while (1) {
+    int pos = readPositionF(200, 50);
+    Serial.print("Position F : ");
+    Serial.println(pos);
+    delay(100);
+  }
+}
+
+void SerialPositionB() {
+  while (1) {
+    int pos = readPositionB(200, 50);
+    Serial.print("Position  B : ");
+    Serial.println(pos);
+    delay(100);
+  }
+}
+
+void SerialPositionFB() {
+  while (1) {
+    int posF = readPositionF(200, 50);
+    int posB = readPositionB(200, 50);
+    Serial.print("Position F : ");
+    Serial.print(posF);
+    Serial.print("  |  Position B : ");
+    Serial.println(posB);
+    delay(100);
+  }
+}
+
 #endif

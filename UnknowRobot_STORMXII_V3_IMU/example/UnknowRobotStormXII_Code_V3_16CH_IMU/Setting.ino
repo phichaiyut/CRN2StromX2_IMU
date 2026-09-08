@@ -1,6 +1,10 @@
 void setup_robot() {
   set_sensor_track_line(0, 15);  //ตั้งค่าจำนวนเซนเซอร์ที่ใช้วิ่ง 0 , 15 || 2 , 14 || 3 , 13 || 4 , 12
 
+  clampSensorValueF(100, 800);  //สำหรับกรองค่า  calibrate
+  clampSensorValueB(100, 800);  //สำหรับกรองค่า  calibrate
+  clampSensorValueC(0, 1000);   //สำหรับกรองค่า  calibrate
+
   set_position_line(7500);  //ตั้งค่าเส้น
   set_position_line_l(1500);  //ตั้งค่าเส้น
   set_position_line_l(13500);  //ตั้งค่าเส้น
