@@ -17,11 +17,7 @@ void Mission() {
 
 
 
-
-
-
-
-
+TurnLRG(100,45,45);
   
 
 

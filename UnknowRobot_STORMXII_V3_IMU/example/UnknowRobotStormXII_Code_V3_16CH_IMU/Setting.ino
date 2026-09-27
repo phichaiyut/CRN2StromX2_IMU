@@ -1,6 +1,6 @@
 void setup_robot() {
   set_sensor_track_line(0, 15);  //ตั้งค่าจำนวนเซนเซอร์ที่ใช้วิ่ง 0 , 15 || 2 , 14 || 3 , 13 || 4 , 12
-
+RobotSetupSpeed();
   clampSensorValueF(100, 800);  //สำหรับกรองค่า  calibrate
   clampSensorValueB(100, 800);  //สำหรับกรองค่า  calibrate
   clampSensorValueC(0, 1000);   //สำหรับกรองค่า  calibrate
@@ -13,7 +13,8 @@ void setup_robot() {
   set_line_center(1);  // เดินตามเส้น เข้ากลางหุ่น
 
   SetSlowKpKd(0.014, 0.14);
-  // SerialCalibrate_AllSensor(); //โชว์ค่าคาลิเบท เซนเซอร์ทั้งหมด
+  //SerialCalibrate_AllSensor(); //โชว์ค่าคาลิเบท เซนเซอร์ทั้งหมด
+  //SerialPositionFB();
 }
 
 void RobotSetupSpeed() {
