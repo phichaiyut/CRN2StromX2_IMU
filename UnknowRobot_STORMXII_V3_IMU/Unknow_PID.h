@@ -473,7 +473,7 @@ void ToCenter() {
       PIDF_none(tctL, tctR, slow_kp_f, slow_kd_f);
     }
     // Motor(tctL, tctR);
-    ReadSensor();
+    ReadCalibrateB();
     if (C[CCL] >= RefC || C[CCR] >= RefC) {
       Motor(-tctL, -tctR);
       delay(5);
@@ -503,7 +503,7 @@ void ToCenterL() {
     } else {
       PIDF_none(tctL, tctR, slow_kp_f, slow_kd_f);
     }
-    ReadSensor();
+    ReadCalibrateB();
     if (C[CCL] >= RefC) {
       Motor(-tctL, -tctR);
       delay(5);
@@ -533,7 +533,7 @@ void ToCenterR() {
     } else {
       PIDF_none(tctL, tctR, slow_kp_f, slow_kd_f);
     }
-    ReadSensor();
+    ReadCalibrateB();
     if (C[CCR] >= RefC) {
       Motor(-tctL, -tctR);
       delay(5);
@@ -580,7 +580,7 @@ void BackCenter() {
     } else {
       PIDB_none(bctL, bctR, slow_kp_b, slow_kd_b);
     }
-    ReadSensor();
+    ReadCalibrateB();
     if (C[CCL] >= RefC || C[CCR] >= RefC) {
       Motor(bctL, bctR);
       delay(5);

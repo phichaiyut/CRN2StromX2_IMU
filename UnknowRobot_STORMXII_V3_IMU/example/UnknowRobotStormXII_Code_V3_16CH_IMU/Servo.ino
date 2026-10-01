@@ -47,7 +47,7 @@ void ServoUp() {
 
 void ServoUp45() {
   MotorStop();
-  ServoMoveSpeed(0, Up - 40, SPD_UP);
+  ServoMoveSpeed(0, Up45, SPD_UP45);
   delay(100);
 }
 

@@ -124,15 +124,48 @@ void SetRobotAngle() {
   current_degree = angleRead();
 }
 
+// ===== ตัวแปรปรับค่าไจโร (ปรับได้ด้วย SetGyroTurn / SetGyroSpin ใน Setting.ino) =====
+float gyro_Kp_Spin         = 0.75f;
+float gyro_Kd_Spin         = 0.9f;
+int   gyro_MaxSpd_Spin     = 40;
+int   gyro_MinSpd_Spin     = 8;
+float gyro_SmallAngle_Spin = 8.0f;
+float gyro_StopThr_Spin    = 1.0f;
+float gyro_Kp_Turn         = 0.75f;
+float gyro_Kd_Turn         = 0.9f;
+int   gyro_MaxSpd_Turn     = 50;
+int   gyro_MinSpd_Turn     = 10;
+float gyro_SmallAngle_Turn = 10.0f;
+float gyro_StopThr_Turn    = 1.0f;
+float gyro_StopThr_Rotate  = 1.0f;
+
+void SetGyroTurn(float kp, float kd, int maxSpd, int minSpd, float smallAngle, float stopThr) {
+  gyro_Kp_Turn         = kp;
+  gyro_Kd_Turn         = kd;
+  gyro_MaxSpd_Turn     = maxSpd;
+  gyro_MinSpd_Turn     = minSpd;
+  gyro_SmallAngle_Turn = smallAngle;
+  gyro_StopThr_Turn    = stopThr;
+}
+
+void SetGyroSpin(float kp, float kd, int maxSpd, int minSpd, float smallAngle, float stopThr) {
+  gyro_Kp_Spin         = kp;
+  gyro_Kd_Spin         = kd;
+  gyro_MaxSpd_Spin     = maxSpd;
+  gyro_MinSpd_Spin     = minSpd;
+  gyro_SmallAngle_Spin = smallAngle;
+  gyro_StopThr_Spin    = stopThr;
+}
+
 /* ---------- spin / turn ---------- */
 
 void spinDegree(int Speed, int relative_degree) {
-  int min_speed = 8;
+  int min_speed = gyro_MinSpd_Spin;
   int max_speed = Speed;
-  float kp = 0.75;
-  float kd = 0.9;
-  float small_angle_threshold = 8;
-  float stop_threshold = 1.0;
+  float kp = gyro_Kp_Spin;
+  float kd = gyro_Kd_Spin;
+  float small_angle_threshold = gyro_SmallAngle_Spin;
+  float stop_threshold = gyro_StopThr_Spin;
   float previous_error = 0;
   float target_degree = current_degree + relative_degree;
   if (target_degree > 180) target_degree -= 360;
@@ -163,15 +196,15 @@ void spinDegree(int Speed, int relative_degree) {
 
 
 void spinDegree(int relative_degree){
-  spinDegree(40, relative_degree);
+  spinDegree(gyro_MaxSpd_Spin, relative_degree);
 }
 void turnDegree(int Speed, int relative_degree) {
-  int min_speed = 10;
+  int min_speed = gyro_MinSpd_Turn;
   int max_speed = Speed;
-  float kp = 0.75;
-  float kd = 0.9;
-  float small_angle_threshold = 10;
-  float stop_threshold = 1.0;
+  float kp = gyro_Kp_Turn;
+  float kd = gyro_Kd_Turn;
+  float small_angle_threshold = gyro_SmallAngle_Turn;
+  float stop_threshold = gyro_StopThr_Turn;
   float previous_error = 0;
   float target_degree = current_degree + relative_degree;
   if (target_degree > 180) target_degree -= 360;
@@ -202,12 +235,12 @@ void turnDegree(int Speed, int relative_degree) {
 }
 
 void turnDegreeB(int Speed ,int relative_degree) {
-  int min_speed = 10;
+  int min_speed = gyro_MinSpd_Turn;
   int max_speed = Speed;
-  float kp = 0.75;
-  float kd = 0.9;
-  float small_angle_threshold = 10;
-  float stop_threshold = 1.0;
+  float kp = gyro_Kp_Turn;
+  float kd = gyro_Kd_Turn;
+  float small_angle_threshold = gyro_SmallAngle_Turn;
+  float stop_threshold = gyro_StopThr_Turn;
   float previous_error = 0;
   float target_degree = current_degree + relative_degree;
   if (target_degree > 180) target_degree -= 360;
@@ -295,11 +328,11 @@ void turnDegreeb_none(int relative_degree) {
   turnDegreeb_none(50, relative_degree);
 }
 void turnDegree(int relative_degree){
-  turnDegree(50, relative_degree);
+  turnDegree(gyro_MaxSpd_Turn, relative_degree);
 }
 
 void turnDegreeB(int relative_degree){
-  turnDegreeB(50, relative_degree);
+  turnDegreeB(gyro_MaxSpd_Turn, relative_degree);
 }
 
 void SpinLG(int Angle) {
@@ -397,6 +430,79 @@ float kpGB = 1.2;
 float kdGB = 1.5;
 // float kdGB = 10;
 
+void SetGyroRun(float kp, float kd) {
+  kpG = kp;
+  kdG = kd;
+}
+
+void SetGyroRunB(float kp, float kd) {
+  kpGB = kp;
+  kdGB = kd;
+}
+
+// โหมดจำกัดกำลังมอเตอร์ของ RunG (เดินหน้า) / RunGB (ถอยหลัง)
+// ค่าเริ่มต้น = โหมด 4, min -5 (เหมือนพฤติกรรมเดิม) ปรับได้ด้วย ModeSpdGyro() ใน Setting.ino
+int MaxSpeedG = 100;
+int MinSpeedG = -5;
+int ModeGyroStatus = 4;
+int ModeGyroBStatus = 4;
+
+// ตั้งโหมดจำกัดกำลังของ gyro (ใช้ทั้ง RunG และ RunGB)
+void ModeSpdGyro(int moD, int maX, int miN) {
+  ModeGyroStatus = moD;
+  ModeGyroBStatus = moD;
+  MaxSpeedG = maX;
+  MinSpeedG = miN;
+}
+
+// ตั้งโหมดแยกเดินหน้า (RunG) / ถอยหลัง (RunGB)
+void ModeSpdGyro(int moDF, int moDB, int maX, int miN) {
+  ModeGyroStatus = moDF;
+  ModeGyroBStatus = moDB;
+  MaxSpeedG = maX;
+  MinSpeedG = miN;
+}
+
+// จำกัดค่า LeftPower/RightPower ของ gyro ตามโหมด
+void ClampGyroPower(float &LeftPower, float &RightPower, int SpeedL, int SpeedR, int mode) {
+  switch (mode) {
+  case 0:  // ..max, ล้อติดลบ → min
+    if (LeftPower > MaxSpeedG) LeftPower = MaxSpeedG;
+    if (LeftPower < 0) LeftPower = MinSpeedG;
+    if (RightPower > MaxSpeedG) RightPower = MaxSpeedG;
+    if (RightPower < 0) RightPower = MinSpeedG;
+    break;
+  case 1:  // min..max
+    if (LeftPower > MaxSpeedG) LeftPower = MaxSpeedG;
+    if (LeftPower < MinSpeedG) LeftPower = MinSpeedG;
+    if (RightPower > MaxSpeedG) RightPower = MaxSpeedG;
+    if (RightPower < MinSpeedG) RightPower = MinSpeedG;
+    break;
+  case 2:  // -Speed..Speed
+    if (LeftPower > SpeedL) LeftPower = SpeedL;
+    if (LeftPower < -SpeedL) LeftPower = -SpeedL;
+    if (RightPower > SpeedR) RightPower = SpeedR;
+    if (RightPower < -SpeedR) RightPower = -SpeedR;
+    break;
+  case 3:  // ..max, ล้อติดลบ → -BaseSpeed
+    if (LeftPower > MaxSpeedG) LeftPower = MaxSpeedG;
+    if (LeftPower < 0) LeftPower = -BaseSpeed;
+    if (RightPower > MaxSpeedG) RightPower = MaxSpeedG;
+    if (RightPower < 0) RightPower = -BaseSpeed;
+    break;
+  case 4:  // ..Speed, ล้อติดลบ → min (min = 0 คือไม่ถอยล้อ)
+    if (LeftPower > SpeedL) LeftPower = SpeedL;
+    if (LeftPower < 0) LeftPower = MinSpeedG;
+    if (RightPower > SpeedR) RightPower = SpeedR;
+    if (RightPower < 0) RightPower = MinSpeedG;
+    break;
+  default:
+    if (LeftPower > MaxSpeedG) LeftPower = MaxSpeedG;
+    if (LeftPower < 0) LeftPower = 0;
+    if (RightPower > MaxSpeedG) RightPower = MaxSpeedG;
+    if (RightPower < 0) RightPower = 0;
+  }
+}
 
 void RunG(int SpeedL,int SpeedR) {
   float error = current_degree - angleRead();
@@ -404,12 +510,9 @@ void RunG(int SpeedL,int SpeedR) {
   else if (error < -180) error += 360;
   float derivative = error - previous_errorG;
   int pd_value = (error * kpG) + (derivative * kdG);
-  int leftPow = SpeedL + pd_value;
-  int rightPow = SpeedR - pd_value;
-  if (leftPow > SpeedL) leftPow = SpeedL;
-  if (leftPow < 0) leftPow = -5;
-  if (rightPow > SpeedR) rightPow = SpeedR;
-  if (rightPow < 0) rightPow = -5;
+  float leftPow = SpeedL + pd_value;
+  float rightPow = SpeedR - pd_value;
+  ClampGyroPower(leftPow, rightPow, SpeedL, SpeedR, ModeGyroStatus);
   Motor(leftPow, rightPow);
   previous_errorG = error;
 }
@@ -420,12 +523,9 @@ void RunGB(int SpeedL,int SpeedR) {
   else if (error < -180) error += 360;
   float derivative = error - previous_errorGB;
   int pd_value = (error * kpGB  ) + (derivative * kdGB);
-  int leftPow = SpeedL - pd_value;
-  int rightPow = SpeedR + pd_value;
-  if (leftPow > SpeedL) leftPow = SpeedL;
-  if (leftPow < 0) leftPow = -5;
-  if (rightPow > SpeedR) rightPow = SpeedR;
-  if (rightPow < 0) rightPow = -5;
+  float leftPow = SpeedL - pd_value;
+  float rightPow = SpeedR + pd_value;
+  ClampGyroPower(leftPow, rightPow, SpeedL, SpeedR, ModeGyroBStatus);
   Motor(-leftPow, -rightPow);
   previous_errorGB = error;
 }
@@ -884,7 +984,7 @@ float gyroZ() {
 /* ---------- rotate degree (arc: independent left/right cruise speed) ---------- */
 
 void rotateDegree(int SpeedL, int SpeedR, int relative_degree, float kp, float kd) {
-  float stop_threshold = 1.0;
+  float stop_threshold = gyro_StopThr_Rotate;
   float previous_error = 0;
   float target_degree = current_degree + relative_degree;
   if (target_degree > 180) target_degree -= 360;
@@ -928,6 +1028,10 @@ void turnDirection(int Speed, int direction) { turnDegree(Speed, relativeToDirec
 void turnDirection(int direction) { turnDegree(relativeToDirection(direction)); }
 void turnDirectionB(int Speed, int direction) { turnDegreeB(Speed, relativeToDirection(direction)); }
 void turnDirectionB(int direction) { turnDegreeB(relativeToDirection(direction)); }
+void turnDirection_none(int Speed, int direction) { turnDegree_none(Speed, relativeToDirection(direction)); }
+void turnDirectionb_none(int Speed, int direction) { turnDegreeb_none(Speed, relativeToDirection(direction)); }
+void turnDirection_none(int direction) { turnDegree_none(relativeToDirection(direction)); }
+void turnDirectionb_none(int direction) { turnDegreeb_none(relativeToDirection(direction)); }
 
 // ตั้งทิศทางสัมบูรณ์ให้ RunG / RunGB วิ่งตรงตาม
 void SetDirectionG(int direction) {
