@@ -167,7 +167,8 @@ void spinDegree(int Speed, int relative_degree) {
   float small_angle_threshold = gyro_SmallAngle_Spin;
   float stop_threshold = gyro_StopThr_Spin;
   float previous_error = 0;
-  float target_degree = current_degree + relative_degree;
+  // float target_degree = current_degree + relative_degree;
+  float target_degree = angleRead() + relative_degree;
   if (target_degree > 180) target_degree -= 360;
   if (target_degree < -180) target_degree += 360;
   current_degree = target_degree;
@@ -191,7 +192,7 @@ void spinDegree(int Speed, int relative_degree) {
     }
     previous_error = error;
   }
-  Stop(200);
+  Stop(100);
 }
 
 
@@ -206,7 +207,8 @@ void turnDegree(int Speed, int relative_degree) {
   float small_angle_threshold = gyro_SmallAngle_Turn;
   float stop_threshold = gyro_StopThr_Turn;
   float previous_error = 0;
-  float target_degree = current_degree + relative_degree;
+  // float target_degree = current_degree + relative_degree;
+   float target_degree = angleRead() + relative_degree;
   if (target_degree > 180) target_degree -= 360;
   if (target_degree < -180) target_degree += 360;
   current_degree = target_degree;
@@ -242,7 +244,8 @@ void turnDegreeB(int Speed ,int relative_degree) {
   float small_angle_threshold = gyro_SmallAngle_Turn;
   float stop_threshold = gyro_StopThr_Turn;
   float previous_error = 0;
-  float target_degree = current_degree + relative_degree;
+  // float target_degree = current_degree + relative_degree;
+   float target_degree = angleRead() + relative_degree;
   if (target_degree > 180) target_degree -= 360;
   if (target_degree < -180) target_degree += 360;
   current_degree = target_degree;
@@ -321,11 +324,11 @@ void turnDegreeb_none(int Speed, int relative_degree) {
 }
 
 void turnDegree_none(int relative_degree) {
-  turnDegree_none(50, relative_degree);
+  turnDegree_none(gyro_MaxSpd_Turn, relative_degree);
 }
 
 void turnDegreeb_none(int relative_degree) {
-  turnDegreeb_none(50, relative_degree);
+  turnDegreeb_none(gyro_MaxSpd_Turn, relative_degree);
 }
 void turnDegree(int relative_degree){
   turnDegree(gyro_MaxSpd_Turn, relative_degree);
@@ -657,7 +660,7 @@ void TrackSelectG(int spd, char select) {
       if (B[3] > Ref && B[12] > Ref) break;
     }
   } else if (select == 'g' || select == 'G') {
-    SetG(100);
+    SetG(spd);
   } else {
     Stop(100);
   }
@@ -704,7 +707,7 @@ void TrackSelectGB(int spd, char select) {
       if (B[3] > Ref && B[12] > Ref) break;
     }
   } else if (select == 'g' || select == 'G') {
-    SetG(100);
+    SetG(spd);
   } else {
     Stop(100);
   }
@@ -974,19 +977,18 @@ void resetAngles() {
   previous_errorGB = 0;
 }
 
-// มุมปัจจุบันแบบ -180 ถึง 180
-float gyroZ() {
-  float a = angleRead();
-  if (a > 180) a -= 360;
-  return a;
+void resetAngle() {
+  resetAngles();
 }
+
 
 /* ---------- rotate degree (arc: independent left/right cruise speed) ---------- */
 
 void rotateDegree(int SpeedL, int SpeedR, int relative_degree, float kp, float kd) {
   float stop_threshold = gyro_StopThr_Rotate;
   float previous_error = 0;
-  float target_degree = current_degree + relative_degree;
+  // float target_degree = current_degree + relative_degree;
+   float target_degree = angleRead() + relative_degree;
   if (target_degree > 180) target_degree -= 360;
   if (target_degree < -180) target_degree += 360;
   current_degree = target_degree;
@@ -1005,7 +1007,7 @@ void rotateDegree(int SpeedL, int SpeedR, int relative_degree, float kp, float k
     Motor(leftPow, rightPow);
     previous_error = error;
   }
-  SetG(10);
+  SetG(max(abs(SpeedL), abs(SpeedR)));
 }
 
 void rotateDegree(int SpeedL, int SpeedR, int relative_degree) {
