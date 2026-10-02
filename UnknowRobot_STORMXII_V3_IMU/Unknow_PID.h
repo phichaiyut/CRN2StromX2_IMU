@@ -877,6 +877,7 @@ void TrackSelectF(int spd, char x) {
     ToFront();
     MotorStop();
   } else if (x == 'p') {
+    BZon();
     ReadCalibrateF();
     while (1) {
       Motor(spd, spd);
@@ -889,8 +890,10 @@ void TrackSelectF(int spd, char x) {
       ReadCalibrateF();
       if (F[3] < Ref && F[12] < Ref) break;
     }
+    BZoff();
   } else if (x == 'P') {
     ToFront();
+    BZon();
     ReadCalibrateF();
     while (1) {
       Motor(spd, spd);
@@ -903,6 +906,7 @@ void TrackSelectF(int spd, char x) {
       ReadCalibrateF();
       if (F[3] < Ref && F[12] < Ref) break;
     }
+    BZoff();
   } else if (x == 'l' || x == 'L') {
     ToCenter();
     SpinL();
@@ -912,37 +916,45 @@ void TrackSelectF(int spd, char x) {
     SpinR();
     FFtimer(0, 8);
   } else if (x == 'q') {
+    BZon();
     while (1) {
       Motor(tctL / 2, tctR / 2);
       ReadCalibrateF();
       if (F[3] < Ref) break;
     }
+    BZoff();
     TurnLeft();
     FFtimer(0, 5);
   } else if (x == 'Q') {
     ToFront();
+    BZon();
     while (1) {
       Motor(tctL / 2, tctR / 2);
       ReadCalibrateF();
       if (F[3] < Ref) break;
     }
+    BZoff();
     TurnLeft();
     FFtimer(0, 5);
   } else if (x == 'e') {
+    BZon();
     while (1) {
       Motor(tctL / 2, tctR / 2);
       ReadCalibrateF();
       if (F[12] < Ref) break;
     }
+    BZoff();
     TurnRight();
     FFtimer(0, 5);
   } else if (x == 'E') {
     ToFront();
+    BZon();
     while (1) {
       Motor(tctL / 2, tctR / 2);
       ReadCalibrateF();
       if (F[12] < Ref) break;
     }
+    BZoff();
     TurnRight();
     FFtimer(0, 5);
   } else if (x == 'c' || x == 'C') {
@@ -956,7 +968,7 @@ void TrackSelectF(int spd, char x) {
     SpinL_B();
     BBtimer(0, 8);
   } else if (x == 'g' || x == 'G') {
-    SetFG(100);
+    SetFG(spd);
   } else {
     MotorStop();
   }
@@ -964,7 +976,9 @@ void TrackSelectF(int spd, char x) {
 }
 
 void TrackSelectB(int spd, char x) {
-  if (x == 's' || x == 'S') {
+  if (x == 's') {
+    MotorStop();
+  } else if ( x == 'S') {
     MotorStop();
   } else if (x == 'p' || x == 'P') {
     ReadCalibrateB();
@@ -1400,7 +1414,7 @@ void BalanceFC(int Counter) {
         while (1) {
           Motor(5, 0);
           ReadCalibrateC();
-          if (C[1] > RefC) {
+          if (C[0] > RefC) {
             MotorStop();
             break;
           }
