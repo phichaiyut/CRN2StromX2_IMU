@@ -18,6 +18,8 @@ int tct, bct, tspd;
 int tctL, tctR, bctL, bctR;
 int LTurnSpdL, LTurnSpdR, TurnDelayL;
 int RTurnSpdL, RTurnSpdR, TurnDelayR;
+int tct_delay_break = 0;
+int bct_delay_break = 0;
 int set_position = 7500;
 int set_position_l = 1500;
 int set_position_r = 13500;
@@ -53,6 +55,9 @@ void SetToCenterSpeed(int tctv) {
 
   slow_kp_b = PID_KP_Back;
   slow_kd_b = PID_KD_Back;
+
+  tct_delay_break = delay_break_f;
+  bct_delay_break = delay_break_b;
 }
 
 void SetSlowKpKd(float sl_kp, float sl_kd) {
@@ -872,9 +877,15 @@ void SpinR2_B(){
 
 void TrackSelectF(int spd, char x) {
   if (x == 's') {
+    Motor(-spd, -spd);
+    delay(delay_break_f);
+    Move(-1, -1, 1);
     MotorStop();
   } else if (x == 'S') {
     ToFront();
+    Motor(-tctL, -tctR);
+    delay(tct_delay_break);
+    Move(-1, -1, 1);
     MotorStop();
   } else if (x == 'p') {
     BZon();
@@ -976,9 +987,10 @@ void TrackSelectF(int spd, char x) {
 }
 
 void TrackSelectB(int spd, char x) {
-  if (x == 's') {
-    MotorStop();
-  } else if ( x == 'S') {
+  if (x == 's' || x == 'S') {
+    Motor(spd, spd);
+    delay(delay_break_b);
+    Move(1, 1, 1);
     MotorStop();
   } else if (x == 'p' || x == 'P') {
     ReadCalibrateB();
@@ -1028,7 +1040,7 @@ void TrackSelectB(int spd, char x) {
     TurnRight_B();
     BBtimer(0, 5);
   } else if (x == 'g' || x == 'G') {
-    SetBG(100);
+    SetBG(spd);
   } else {
     MotorStop();
   }
