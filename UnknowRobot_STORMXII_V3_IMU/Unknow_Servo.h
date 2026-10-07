@@ -22,7 +22,7 @@ int Up, Up45, Down, OpenL2, OpenR2, OpenRMax, OpenLMax, OpenRMax2, OpenLMax2;
 int SPD_OPEN, SPD_OPENMAX, SPD_CLOSE, SPD_CLOSESMALL;
 int SPD_UP, SPD_UP45, SPD_DOWN;
 
-int servoPos[3] = {90, 90, 90};
+int servoPos[3] = { 90, 90, 90 };
 
 // ---------- Direct Write (FIX: renamed from Servo() to avoid conflict with Servo class) ----------
 
@@ -83,9 +83,15 @@ void ServoMove2Sync(int sL, int targetL, int sR, int targetR, int speedDelay) {
 
 // ---------- Speed Setters ----------
 
-void setServoSpeed_Up(int SpeedUp) { SPD_UP = SpeedUp; }
-void setServoSpeed_Up45(int SpeedUp45) { SPD_UP45 = SpeedUp45; }  // FIX: added missing setter
-void setServoSpeed_Down(int SpeedDown) { SPD_DOWN = SpeedDown; }
+void setServoSpeed_Up(int SpeedUp) {
+  SPD_UP = SpeedUp;
+}
+void setServoSpeed_Up45(int SpeedUp45) {
+  SPD_UP45 = SpeedUp45;
+}  // FIX: added missing setter
+void setServoSpeed_Down(int SpeedDown) {
+  SPD_DOWN = SpeedDown;
+}
 void setServoSpeed_Open(int SpeedOpen) {
   SPD_OPEN = SpeedOpen;
   SPD_OPENMAX = SpeedOpen;

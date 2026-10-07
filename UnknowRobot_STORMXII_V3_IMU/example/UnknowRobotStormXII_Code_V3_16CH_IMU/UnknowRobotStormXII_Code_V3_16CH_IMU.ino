@@ -26,10 +26,12 @@ void setup() {
   /////////////////////////////////////////
 
   //////////// SET TURN SPEED /////////////
-  TurnSpeedLeft(25, 80, 60);   // ความเร็วเลี้ยวซ้าย
-  TurnSpeedRight(80, 25, 60);  // ความเร็วเลี้ยวขวา
-  SetToCenterSpeed(30);        // ความเร็วเข้ากลางหุ่น
-  SetTurnSpeed(50);            // ความเร็วเลี้ยวเข้าแยก
+  TurnSpeedLeft(25, 80, 60);        // ความเร็วเลี้ยวซ้าย
+  TurnSpeedRight(80, 25, 60);       // ความเร็วเลี้ยวขวา
+  SetSensorTurnLeftRight(5, 10);    // เซนเซอร์หน้าที่ใช้หยุดเลี้ยว TurnLeft (F[0..5]) / TurnRight (F[15..10])
+  SetSensorTurnLeftRight_B(5, 10);  // เซนเซอร์หลังที่ใช้หยุดเลี้ยว TurnLeft_B (B[0..5]) / TurnRight_B (B[15..10])
+  SetToCenterSpeed(30);             // ความเร็วเข้ากลางหุ่น
+  SetTurnSpeed(50);                 // ความเร็วเลี้ยวเข้าแยก
   /////////////////////////////////////////
 
   //////////// SET BALANCE MOTOR //////////
@@ -77,7 +79,7 @@ void setup() {
   swOK();
   setAngleOffset();  // SETUP GYRO ANGLE
   delay(200);
-  
+
   SetRobotAngle();
   // TestMotor(); //ทดสอบมอเตอร์ ล้อซ้ายจะหมุนไปข้างหน้าก่อน ล้อขวาหมุนไปข้างหน้า
   // SerialServoControl();  //ตั้งค่าเซอร์โวผ่าน serial monitor. 39 38 37  36  35 34 2 1 0

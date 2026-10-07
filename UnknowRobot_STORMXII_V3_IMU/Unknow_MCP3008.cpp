@@ -66,7 +66,7 @@ int Unknow_MCP3008::SPIxADC(uint8_t channel, bool differential) {
     byte b0, b1, b2;
 
     _spi->beginTransaction(
-        SPISettings(MCP3008_SPI_MAX, MCP3008_SPI_ORDER, MCP3008_SPI_MODE));
+      SPISettings(MCP3008_SPI_MAX, MCP3008_SPI_ORDER, MCP3008_SPI_MODE));
     digitalWrite(cs, LOW);
 
     b0 = _spi->transfer(command);

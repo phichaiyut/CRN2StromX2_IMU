@@ -73,8 +73,8 @@ float KP[10], KD[10];
 float KP_Back[10], KD_Back[10];
 int delay_break_f = 30;
 int delay_break_b = 30;
-int delay_break_f_table[10] = {30, 30, 30, 30, 30, 30, 30, 30, 30, 30};
-int delay_break_b_table[10] = {30, 30, 30, 30, 30, 30, 30, 30, 30, 30};
+int delay_break_f_table[10] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
+int delay_break_b_table[10] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
 
 // กำหนด index ความเร็ว
 #define SPD_10 0
