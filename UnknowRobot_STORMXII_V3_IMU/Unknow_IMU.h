@@ -35,6 +35,23 @@ float angleRead() {
   return adjusted;
 }
 
+// อ่านมุม 5 ครั้งแล้วหาค่าเฉลี่ย (เทียบกับค่าแรกเพื่อกันปัญหาข้าม 0/360)
+float angleReadAvg() {
+  float first = angleRead();
+  float sum = 0;
+  for (int i = 0; i < 5; i++) {
+    float diff = angleRead() - first;
+    if (diff > 180) diff -= 360;
+    else if (diff < -180) diff += 360;
+    sum += diff;
+    delay(5);
+  }
+  float avg = first + sum / 5.0f;
+  if (avg >= 360) avg -= 360;
+  else if (avg < 0) avg += 360;
+  return avg;
+}
+
 float kpHold = 2.5;
 float kdHold = 1.5;
 float kpFHold = 2.5;
@@ -125,8 +142,8 @@ void SetRobotAngle() {
 }
 
 void resetAngle() {
-  for (int i = 0; i < 10; i++) setAngleOffset();
-  current_degree = angleRead();
+  setAngleOffset();
+  current_degree = angleReadAvg();
   previous_errorG = 0;
   previous_errorGB = 0;
 }
@@ -1060,7 +1077,7 @@ void BBcmG(int Speed, float distance_cm, char select) {
 
 void resetAngles() {
   setAngleOffset();
-  current_degree = angleRead();
+  current_degree = angleReadAvg();
   previous_errorG = 0;
   previous_errorGB = 0;
 }
