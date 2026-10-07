@@ -125,7 +125,7 @@ void SetRobotAngle() {
 }
 
 void resetAngle() {
-  for (int i = 0; i < 10; i++) angleRead();
+  for (int i = 0; i < 10; i++) setAngleOffset();
   current_degree = angleRead();
   previous_errorG = 0;
   previous_errorGB = 0;
