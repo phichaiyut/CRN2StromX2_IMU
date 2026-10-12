@@ -3,13 +3,27 @@
 
 #include <Arduino.h>
 
+/* ==================================================================================================
+ *  Unknow_Motor.h — มอเตอร์ และตารางค่าตามความเร็ว
+ *
+ *   1) ขามอเตอร์ / สั่งมอเตอร์
+ *   2) ตารางค่าตามความเร็ว (SPD_10 ... SPD_100)
+ *   3) InitialSpeed — เลือกค่าจากตารางตาม BaseSpeed
+ * ================================================================================================== */
+
+
+/* ==================================================================================================
+ *  1) ขามอเตอร์ / สั่งมอเตอร์   (ความเร็ว -100 ถึง 100)
+ * ================================================================================================== */
+
 #define PH1 22
 #define EN1 21
 #define PH2 25
 #define EN2 24
 
-int BalanceMotorLeft, BalanceMotorRight;
+int BalanceMotorLeft, BalanceMotorRight;  // ชดเชยความเร็วล้อซ้าย / ขวา ทุกคำสั่ง
 
+// มอเตอร์ซ้าย
 void Motor1(int Pow) {
   analogWriteResolution(12);
   analogWriteFreq(20000);
@@ -19,6 +33,7 @@ void Motor1(int Pow) {
   analogWrite(EN1, Pow);
 }
 
+// มอเตอร์ขวา
 void Motor2(int Pow) {
   analogWriteResolution(12);
   analogWriteFreq(20000);
@@ -28,11 +43,13 @@ void Motor2(int Pow) {
   analogWrite(EN2, Pow);
 }
 
+// สั่งมอเตอร์ทันที ไม่หน่วงเวลา
 void Motor(int leftspeed, int rightspeed) {
   Motor1(leftspeed + BalanceMotorLeft);
   Motor2(rightspeed + BalanceMotorRight);
 }
 
+// สั่งมอเตอร์ แล้วหน่วงเวลา Movedelay ms
 void Move(int leftspeed, int rightspeed, int Movedelay) {
   Motor(leftspeed, rightspeed);
   delay(Movedelay);
@@ -50,33 +67,26 @@ void MotorStop(int StopDelay) {
   MotorStop();
   delay(StopDelay);
 }
+
 void Stop(int StopDelay) {
-  MotorStop();
-  delay(StopDelay);
+  MotorStop(StopDelay);
 }
 
+// ทดสอบ: ล้อซ้ายหมุนไปหน้า แล้วตามด้วยล้อขวา
 void TestMotor() {
-  Move(20, 0, 300);  //สั่งมอเตอร์ซ้าย
-  MotorStop();       // หยุดการทำงานมอเตอร์
-  delay(500);        // หน่วงเวลา 0.5 วินาที
-  Move(0, 20, 300);  //สั่งมอเตอร์ขวา
-  MotorStop();       // หยุดการทำงานมอเตอร์
+  Move(20, 0, 300);
+  MotorStop();
+  delay(500);
+  Move(0, 20, 300);
+  MotorStop();
 }
 
-int BaseSpeed, LeftBaseSpeed, RightBaseSpeed, BackLeftBaseSpeed, BackRightBaseSpeed;
-float PID_KP_Front, PID_KD_Front;
-float PID_KP_Back, PID_KD_Back;
-// int LastError_F, LastError_B;
-int L[10], R[10];
-int BL[10], BR[10];
-float KP[10], KD[10];
-float KP_Back[10], KD_Back[10];
-int delay_break_f = 30;
-int delay_break_b = 30;
-int delay_break_f_table[10] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
-int delay_break_b_table[10] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
 
-// กำหนด index ความเร็ว
+/* ==================================================================================================
+ *  2) ตารางค่าตามความเร็ว (ตั้งใน Setting.ino)
+ * ================================================================================================== */
+
+// index ของตาราง (ความเร็ว 1-10 → SPD_10, 11-20 → SPD_20, ... , 91 ขึ้นไป → SPD_100)
 #define SPD_10 0
 #define SPD_20 1
 #define SPD_30 2
@@ -87,6 +97,13 @@ int delay_break_b_table[10] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
 #define SPD_80 7
 #define SPD_90 8
 #define SPD_100 9
+
+int L[10], R[10];          // ชดเชยล้อ เดินหน้า
+int BL[10], BR[10];        // ชดเชยล้อ ถอยหลัง
+float KP[10], KD[10];      // PID เดินหน้า
+float KP_Back[10], KD_Back[10];  // PID ถอยหลัง
+int delay_break_f_table[10] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };  // เวลาเบรก เดินหน้า (ms)
+int delay_break_b_table[10] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };  // เวลาเบรก ถอยหลัง (ms)
 
 void setBalanceSpeed(int ch, int spdL, int spdR) {
   L[ch] = spdL;
@@ -113,123 +130,30 @@ void SetDelayBreak(int ch, int delay_f, int delay_b) {
   delay_break_b_table[ch] = delay_b;
 }
 
+
+/* ==================================================================================================
+ *  3) InitialSpeed — ตั้ง BaseSpeed ก่อน แล้วเรียกเพื่อเลือกค่าจากตาราง
+ * ================================================================================================== */
+
+int BaseSpeed, LeftBaseSpeed, RightBaseSpeed, BackLeftBaseSpeed, BackRightBaseSpeed;
+float PID_KP_Front, PID_KD_Front;
+float PID_KP_Back, PID_KD_Back;
+int delay_break_f = 30;
+int delay_break_b = 30;
+
 void InitialSpeed() {
-  //  LastError_F   = 3500, LastError_B = 3500;
-  if (BaseSpeed <= 10) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_10];
-    RightBaseSpeed = BaseSpeed - R[SPD_10];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_10];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_10];
-    PID_KP_Front = KP[SPD_10];  // forward PID
-    PID_KD_Front = KD[SPD_10];
+  int idx = constrain((BaseSpeed - 1) / 10, SPD_10, SPD_100);  // ปัดขึ้นเป็นสิบ เช่น 35 ใช้ชุดของ 40
 
-    PID_KP_Back = KP_Back[SPD_10];  // backward PID
-    PID_KD_Back = KD_Back[SPD_10];
+  LeftBaseSpeed = BaseSpeed - L[idx];
+  RightBaseSpeed = BaseSpeed - R[idx];
+  BackLeftBaseSpeed = BaseSpeed - BL[idx];
+  BackRightBaseSpeed = BaseSpeed - BR[idx];
 
-  } else if (BaseSpeed <= 20) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_20];
-    RightBaseSpeed = BaseSpeed - R[SPD_20];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_20];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_20];
-    PID_KP_Front = KP[SPD_20];  // forward PID
-    PID_KD_Front = KD[SPD_20];
+  PID_KP_Front = KP[idx];
+  PID_KD_Front = KD[idx];
+  PID_KP_Back = KP_Back[idx];
+  PID_KD_Back = KD_Back[idx];
 
-    PID_KP_Back = KP_Back[SPD_20];  // backward PID
-    PID_KD_Back = KD_Back[SPD_20];
-
-  }
-
-  else if (BaseSpeed <= 30) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_30];
-    RightBaseSpeed = BaseSpeed - R[SPD_30];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_30];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_30];
-    PID_KP_Front = KP[SPD_30];  // forward PID
-    PID_KD_Front = KD[SPD_30];
-
-    PID_KP_Back = KP_Back[SPD_30];  // backward PID
-    PID_KD_Back = KD_Back[SPD_30];
-
-  } else if (BaseSpeed <= 40) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_40];
-    RightBaseSpeed = BaseSpeed - R[SPD_40];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_40];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_40];
-    PID_KP_Front = KP[SPD_40];  // forward PID
-    PID_KD_Front = KD[SPD_40];  // 11
-
-    PID_KP_Back = KP_Back[SPD_40];  // backward PID
-    PID_KD_Back = KD_Back[SPD_40];
-
-  } else if (BaseSpeed <= 50) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_50];
-    RightBaseSpeed = BaseSpeed - R[SPD_50];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_50];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_50];
-    PID_KP_Front = KP[SPD_50];  // forward PID
-    PID_KD_Front = KD[SPD_50];  // 14
-
-    PID_KP_Back = KP_Back[SPD_50];  // backward PID
-    PID_KD_Back = KD_Back[SPD_50];
-
-  } else if (BaseSpeed <= 60) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_60];
-    RightBaseSpeed = BaseSpeed - R[SPD_60];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_60];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_60];
-    PID_KP_Front = KP[SPD_60];  // forward PID
-    PID_KD_Front = KD[SPD_60];  // 17
-
-    PID_KP_Back = KP_Back[SPD_60];  // backward PID
-    PID_KD_Back = KD_Back[SPD_60];
-
-  } else if (BaseSpeed <= 70) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_70];
-    RightBaseSpeed = BaseSpeed - R[SPD_70];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_70];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_70];
-    PID_KP_Front = KP[SPD_70];  // forward PID
-    PID_KD_Front = KD[SPD_70];  // 20
-
-    PID_KP_Back = KP_Back[SPD_70];  // backward PID
-    PID_KD_Back = KD_Back[SPD_70];
-
-  } else if (BaseSpeed <= 80) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_80];
-    RightBaseSpeed = BaseSpeed - R[SPD_80];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_80];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_80];
-    PID_KP_Front = KP[SPD_80];  // forward PID
-    PID_KD_Front = KD[SPD_80];  // 20
-
-    PID_KP_Back = KP_Back[SPD_80];  // backward PID
-    PID_KD_Back = KD_Back[SPD_80];
-
-  } else if (BaseSpeed <= 90) {
-    LeftBaseSpeed = BaseSpeed - L[SPD_90];
-    RightBaseSpeed = BaseSpeed - R[SPD_90];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_90];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_90];
-    PID_KP_Front = KP[SPD_90];  // forward PID
-    PID_KD_Front = KD[SPD_90];  // 22
-
-    PID_KP_Back = KP_Back[SPD_90];  // backward PID
-    PID_KD_Back = KD_Back[SPD_90];
-
-  } else {
-    LeftBaseSpeed = BaseSpeed - L[SPD_100];
-    RightBaseSpeed = BaseSpeed - R[SPD_100];
-    BackLeftBaseSpeed = BaseSpeed - BL[SPD_100];
-    BackRightBaseSpeed = BaseSpeed - BR[SPD_100];
-    PID_KP_Front = KP[SPD_100];  // forward PID
-    PID_KD_Front = KD[SPD_100];  // 25
-
-    PID_KP_Back = KP_Back[SPD_100];  // backward PID
-    PID_KD_Back = KD_Back[SPD_100];
-  }
-
-  // เวลาเบรก (ms) ตามช่วงความเร็ว (ปัดขึ้นเป็นสิบ เช่น 35 ใช้ชุดของ 40)
-  int idx = constrain((BaseSpeed - 1) / 10, SPD_10, SPD_100);
   delay_break_f = delay_break_f_table[idx];
   delay_break_b = delay_break_b_table[idx];
 }

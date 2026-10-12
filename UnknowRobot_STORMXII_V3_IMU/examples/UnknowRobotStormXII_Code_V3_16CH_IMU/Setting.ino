@@ -5,14 +5,12 @@ void setup_robot() {
   clampSensorValueB(100, 800);  //สำหรับกรองค่า  calibrate
   clampSensorValueC(0, 1000);   //สำหรับกรองค่า  calibrate
 
-  set_position_line(7500);     //ตั้งค่าเส้น
-  set_position_line_l(1500);   //ตั้งค่าเส้น
-  set_position_line_l(13500);  //ตั้งค่าเส้น
+  set_position_line(7500);     //ตั้งค่าเส้น ตรงกลาง
+  set_position_line_l(1500);   //ตั้งค่าเส้น ตอนกินโค้งซ้าย (CirCleL)
+  set_position_line_r(13500);  //ตั้งค่าเส้น ตอนกินโค้งขวา (CirCleR)
 
   // set_line_center(0);  // เดินธรรมดา เข้ากลางหุ่น
   set_line_center(1);  // เดินตามเส้น เข้ากลางหุ่น
-
-  SetSlowKpKd(0.014, 0.14);
 
   /******************** GYRO SPEED MODE ********************/
   // เลือกเปิดใช้ทีละบรรทัด (mode, max, min)
