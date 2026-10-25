@@ -1,25 +1,29 @@
+/* =====================================================================
+ *  Unknow_Sensor.h — เซนเซอร์เส้น 16CH หน้า/หลัง + คู่กลาง, คาลิเบรต, EEPROM
+ *
+ *  สารบัญ
+ *     1) ขา / ค่าคงที่
+ *     2) ตัวแปร (Global Variables)
+ *     3) Mux (เลือกช่องเซนเซอร์)
+ *     4) อ่านค่าดิบ
+ *     5) ตั้งค่าเซนเซอร์
+ *     6) ค่าคาลิเบรต (LightValue)
+ *     7) อ่านค่าที่คาลิเบรตแล้ว
+ *     8) คาลิเบรตอัตโนมัติ
+ *     9) บันทึก / โหลดค่าคาลิเบรต (EEPROM)
+ *    10) Serial Debug
+ * ===================================================================== */
+
 #ifndef UNKNOW_SENSOR_H
 #define UNKNOW_SENSOR_H
 
 #include <Arduino.h>
 #include <EEPROM.h>
 
-/* ==================================================================================================
- *  Unknow_Sensor.h — เซนเซอร์เส้น หน้า (F) / หลัง (B) 16 ตัว และคู่กลาง (C) 2 ตัว
- *
- *   1) ขา / ตัวแปร
- *   2) ค่าตั้ง (Config)
- *   3) อ่านค่าดิบ (Mux)
- *   4) ค่าคาลิเบรต (LightValue_xxx)
- *   5) อ่านค่าที่คาลิเบรตแล้ว (0 - 1000)
- *   6) คาลิเบรตอัตโนมัติ / EEPROM
- *   7) Serial debug
- * ================================================================================================== */
 
-
-/* ==================================================================================================
- *  1) ขา / ตัวแปร
- * ================================================================================================== */
+// =====================================================================
+//  1) ขา / ค่าคงที่
+// =====================================================================
 
 #define NUM_SENSORS 16
 #define S0 14
@@ -29,38 +33,109 @@
 #define S3B 17
 #define SIG A0
 #define SIGB A1
-
 #define BLACK 0
 #define WHITE 1
-#define CCL 0  // เซนเซอร์กลางซ้าย C[0]
-#define CCR 1  // เซนเซอร์กลางขวา C[1]
-
-uint8_t F_PIN[NUM_SENSORS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-uint8_t B_PIN[NUM_SENSORS] = { 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
-
-int F[NUM_SENSORS], B[NUM_SENSORS], C[2];
-int F_Ref[NUM_SENSORS], B_Ref[NUM_SENSORS], C_Ref[2];
-int minValueF[NUM_SENSORS], maxValueF[NUM_SENSORS];
-int minValueB[NUM_SENSORS], maxValueB[NUM_SENSORS];
-int minValueC[2], maxValueC[2];
+#define CCL 0
+#define CCR 1
 
 
-/* ==================================================================================================
- *  2) ค่าตั้ง (Config)
- * ================================================================================================== */
+// =====================================================================
+//  2) ตัวแปร (Global Variables)
+// =====================================================================
 
-// ช่วงกรองค่าหลังคาลิเบรต: ต่ำกว่า MIN → 0, สูงกว่า MAX → 1000
-int FRONT_MIN = 80;
-int FRONT_MAX = 900;
-int CENTER_MIN = 0;
-int CENTER_MAX = 1000;
-int BACK_MIN = 80;
-int BACK_MAX = 90;
+// ตารางช่อง mux คงที่ → const เก็บใน flash ไม่กิน RAM
+const uint8_t F_PIN[NUM_SENSORS] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+const uint8_t B_PIN[NUM_SENSORS] = { 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 
-int Ref = 500;        // ค่าแบ่งขาว/ดำ เซนเซอร์หน้า-หลัง
-int RefC = 500;       // ค่าแบ่งขาว/ดำ เซนเซอร์คู่กลาง
-int LineColor = 0;    // BLACK / WHITE
-int TrackLineCH = 0;  // จำนวนเซนเซอร์ที่ใช้จับแยก
+// ค่าเซนเซอร์ดิบ 0..4095 / ค่าคาลิเบรต 0..1000 → int16_t พอ (ต้องมีเครื่องหมาย เพราะ max - 80 ติดลบได้)
+int16_t F[NUM_SENSORS], B[NUM_SENSORS], C[2];
+int16_t minValueF[NUM_SENSORS], maxValueF[NUM_SENSORS];
+int16_t minValueB[NUM_SENSORS], maxValueB[NUM_SENSORS];
+int16_t minValueC[2], maxValueC[2];
+
+// FRONT
+int16_t FRONT_MIN = 80;
+int16_t FRONT_MAX = 900;
+
+// CENTER
+int16_t CENTER_MIN = 0;
+int16_t CENTER_MAX = 1000;
+
+// BACK
+int16_t BACK_MIN = 80;
+int16_t BACK_MAX = 90;
+int16_t Ref = 500;
+int16_t RefC = 500;
+uint8_t LineColor = 0;    // BLACK / WHITE
+uint8_t TrackLineCH = 0;  // 6..16
+
+
+// =====================================================================
+//  3) Mux (เลือกช่องเซนเซอร์)
+// =====================================================================
+
+inline void muxSelectF(uint8_t ch) {
+  digitalWrite(S0, (ch >> 0) & 1);
+  digitalWrite(S1, (ch >> 1) & 1);
+  digitalWrite(S2, (ch >> 2) & 1);
+  digitalWrite(S3, (ch >> 3) & 1);
+}
+
+int muxReadF(uint8_t ch) {
+  muxSelectF(ch);
+  delayMicroseconds(3);
+  return analogRead(SIG);
+}
+
+inline void muxSelectB(uint8_t ch) {
+  digitalWrite(S0, (ch >> 0) & 1);
+  digitalWrite(S1, (ch >> 1) & 1);
+  digitalWrite(S2, (ch >> 2) & 1);
+  digitalWrite(S3B, (ch >> 3) & 1);
+}
+
+int muxReadB(uint8_t ch) {
+  muxSelectB(ch);
+  delayMicroseconds(3);
+  return analogRead(SIGB);
+}
+
+uint16_t read_sensorA(int sensor) {
+  return muxReadF(sensor);
+}
+
+uint16_t read_sensorB(int sensor) {
+  return muxReadB(sensor);
+}
+
+
+// =====================================================================
+//  4) อ่านค่าดิบ
+// =====================================================================
+
+void ReadF() {
+  for (int i = 0; i < NUM_SENSORS; i++) F[i] = read_sensorA(F_PIN[i]);
+}
+
+void ReadB() {
+  for (int i = 0; i < NUM_SENSORS; i++) B[i] = read_sensorB(B_PIN[i]);
+}
+
+void ReadC() {
+  C[0] = analogRead(A6);
+  C[1] = analogRead(A7);
+}
+
+void ReadSensorRaw() {
+  ReadF();
+  ReadB();
+  ReadC();
+}
+
+
+// =====================================================================
+//  5) ตั้งค่าเซนเซอร์
+// =====================================================================
 
 void clampSensorValueF(int x, int y) {
   FRONT_MIN = x;
@@ -98,67 +173,9 @@ void SetSensorTrackLine_CH(int x) {
 }
 
 
-/* ==================================================================================================
- *  3) อ่านค่าดิบ (Mux)
- * ================================================================================================== */
-
-inline void muxSelectF(uint8_t ch) {
-  digitalWrite(S0, (ch >> 0) & 1);
-  digitalWrite(S1, (ch >> 1) & 1);
-  digitalWrite(S2, (ch >> 2) & 1);
-  digitalWrite(S3, (ch >> 3) & 1);
-}
-
-inline void muxSelectB(uint8_t ch) {
-  digitalWrite(S0, (ch >> 0) & 1);
-  digitalWrite(S1, (ch >> 1) & 1);
-  digitalWrite(S2, (ch >> 2) & 1);
-  digitalWrite(S3B, (ch >> 3) & 1);
-}
-
-int muxReadF(uint8_t ch) {
-  muxSelectF(ch);
-  delayMicroseconds(3);
-  return analogRead(SIG);
-}
-
-int muxReadB(uint8_t ch) {
-  muxSelectB(ch);
-  delayMicroseconds(3);
-  return analogRead(SIGB);
-}
-
-uint16_t read_sensorA(int sensor) {
-  return muxReadF(sensor);
-}
-
-uint16_t read_sensorB(int sensor) {
-  return muxReadB(sensor);
-}
-
-void ReadF() {
-  for (int i = 0; i < NUM_SENSORS; i++) F[i] = read_sensorA(F_PIN[i]);
-}
-
-void ReadB() {
-  for (int i = 0; i < NUM_SENSORS; i++) B[i] = read_sensorB(B_PIN[i]);
-}
-
-void ReadC() {
-  C[0] = analogRead(A6);
-  C[1] = analogRead(A7);
-}
-
-void ReadSensorRaw() {
-  ReadF();
-  ReadB();
-  ReadC();
-}
-
-
-/* ==================================================================================================
- *  4) ค่าคาลิเบรต — คัดลอกบรรทัดที่ CalibrateSensor() พิมพ์ออกมาไปวางใน setup()
- * ================================================================================================== */
+// =====================================================================
+//  6) ค่าคาลิเบรต (LightValue)
+// =====================================================================
 
 void LightValue_FrontSensor(
   uint16_t minF0, uint16_t minF1, uint16_t minF2, uint16_t minF3,
@@ -169,14 +186,45 @@ void LightValue_FrontSensor(
   uint16_t maxF4, uint16_t maxF5, uint16_t maxF6, uint16_t maxF7,
   uint16_t maxF8, uint16_t maxF9, uint16_t maxF10, uint16_t maxF11,
   uint16_t maxF12, uint16_t maxF13, uint16_t maxF14, uint16_t maxF15) {
-  const uint16_t mins[NUM_SENSORS] = { minF0, minF1, minF2, minF3, minF4, minF5, minF6, minF7,
-                                       minF8, minF9, minF10, minF11, minF12, minF13, minF14, minF15 };
-  const uint16_t maxs[NUM_SENSORS] = { maxF0, maxF1, maxF2, maxF3, maxF4, maxF5, maxF6, maxF7,
-                                       maxF8, maxF9, maxF10, maxF11, maxF12, maxF13, maxF14, maxF15 };
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    minValueF[i] = mins[i];
-    maxValueF[i] = maxs[i];
-  }
+  minValueF[0] = minF0;
+  minValueF[1] = minF1;
+  minValueF[2] = minF2;
+  minValueF[3] = minF3;
+  minValueF[4] = minF4;
+  minValueF[5] = minF5;
+  minValueF[6] = minF6;
+  minValueF[7] = minF7;
+  minValueF[8] = minF8;
+  minValueF[9] = minF9;
+  minValueF[10] = minF10;
+  minValueF[11] = minF11;
+  minValueF[12] = minF12;
+  minValueF[13] = minF13;
+  minValueF[14] = minF14;
+  minValueF[15] = minF15;
+  maxValueF[0] = maxF0;
+  maxValueF[1] = maxF1;
+  maxValueF[2] = maxF2;
+  maxValueF[3] = maxF3;
+  maxValueF[4] = maxF4;
+  maxValueF[5] = maxF5;
+  maxValueF[6] = maxF6;
+  maxValueF[7] = maxF7;
+  maxValueF[8] = maxF8;
+  maxValueF[9] = maxF9;
+  maxValueF[10] = maxF10;
+  maxValueF[11] = maxF11;
+  maxValueF[12] = maxF12;
+  maxValueF[13] = maxF13;
+  maxValueF[14] = maxF14;
+  maxValueF[15] = maxF15;
+}
+
+void LightValue_CenterSensor(uint16_t minC0, uint16_t minC1, uint16_t maxC0, uint16_t maxC1) {
+  minValueC[0] = minC0;
+  minValueC[1] = minC1;
+  maxValueC[0] = maxC0;
+  maxValueC[1] = maxC1;
 }
 
 void LightValue_BackSensor(
@@ -188,38 +236,76 @@ void LightValue_BackSensor(
   uint16_t maxB4, uint16_t maxB5, uint16_t maxB6, uint16_t maxB7,
   uint16_t maxB8, uint16_t maxB9, uint16_t maxB10, uint16_t maxB11,
   uint16_t maxB12, uint16_t maxB13, uint16_t maxB14, uint16_t maxB15) {
-  const uint16_t mins[NUM_SENSORS] = { minB0, minB1, minB2, minB3, minB4, minB5, minB6, minB7,
-                                       minB8, minB9, minB10, minB11, minB12, minB13, minB14, minB15 };
-  const uint16_t maxs[NUM_SENSORS] = { maxB0, maxB1, maxB2, maxB3, maxB4, maxB5, maxB6, maxB7,
-                                       maxB8, maxB9, maxB10, maxB11, maxB12, maxB13, maxB14, maxB15 };
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    minValueB[i] = mins[i];
-    maxValueB[i] = maxs[i];
-  }
+  minValueB[0] = minB0;
+  minValueB[1] = minB1;
+  minValueB[2] = minB2;
+  minValueB[3] = minB3;
+  minValueB[4] = minB4;
+  minValueB[5] = minB5;
+  minValueB[6] = minB6;
+  minValueB[7] = minB7;
+  minValueB[8] = minB8;
+  minValueB[9] = minB9;
+  minValueB[10] = minB10;
+  minValueB[11] = minB11;
+  minValueB[12] = minB12;
+  minValueB[13] = minB13;
+  minValueB[14] = minB14;
+  minValueB[15] = minB15;
+  maxValueB[0] = maxB0;
+  maxValueB[1] = maxB1;
+  maxValueB[2] = maxB2;
+  maxValueB[3] = maxB3;
+  maxValueB[4] = maxB4;
+  maxValueB[5] = maxB5;
+  maxValueB[6] = maxB6;
+  maxValueB[7] = maxB7;
+  maxValueB[8] = maxB8;
+  maxValueB[9] = maxB9;
+  maxValueB[10] = maxB10;
+  maxValueB[11] = maxB11;
+  maxValueB[12] = maxB12;
+  maxValueB[13] = maxB13;
+  maxValueB[14] = maxB14;
+  maxValueB[15] = maxB15;
 }
 
-void LightValue_CenterSensor(uint16_t minC0, uint16_t minC1, uint16_t maxC0, uint16_t maxC1) {
-  minValueC[0] = minC0;
-  minValueC[1] = minC1;
-  maxValueC[0] = maxC0;
-  maxValueC[1] = maxC1;
-}
 
-
-/* ==================================================================================================
- *  5) อ่านค่าที่คาลิเบรตแล้ว (0 - 1000, ค่ามาก = เจอเส้น)
- * ================================================================================================== */
+// =====================================================================
+//  7) อ่านค่าที่คาลิเบรตแล้ว
+// =====================================================================
 
 void ReadCalibrateF() {
   ReadF();
   for (int i = 0; i < NUM_SENSORS; i++) {
     F[i] = constrain(F[i], minValueF[i], maxValueF[i]);
     int x;
-    if (LineColor == BLACK) x = map(F[i], minValueF[i], maxValueF[i], 1000, 0);
-    else x = map(F[i], minValueF[i], maxValueF[i], 0, 1000);
+    if (LineColor == BLACK)
+      x = map(F[i], minValueF[i], maxValueF[i], 1000, 0);
+    else
+      x = map(F[i], minValueF[i], maxValueF[i], 0, 1000);
     if (x < FRONT_MIN) x = 0;
     if (x > FRONT_MAX) x = 1000;
+    // if (x < 0)    x = 0;
+    // if (x > 1000) x = 1000;
     F[i] = x;
+  }
+}
+
+void ReadCalibrateC() {
+  ReadC();
+  for (int i = 0; i < 2; i++) {
+    C[i] = constrain(C[i], minValueC[i], maxValueC[i]);
+    int x;
+    if (LineColor == BLACK)
+      x = map(C[i], minValueC[i], maxValueC[i], 0, 1000);
+    else
+      x = map(C[i], minValueC[i], maxValueC[i], 1000, 0);
+    if (x < CENTER_MIN) x = 0;
+    if (x > CENTER_MAX) x = 1000;
+    // if (x < 0)    x = 0;
+    // if (x > 1000) x = 1000;
+    C[i] = x;
   }
 }
 
@@ -228,25 +314,15 @@ void ReadCalibrateB() {
   for (int i = 0; i < NUM_SENSORS; i++) {
     B[i] = constrain(B[i], minValueB[i], maxValueB[i]);
     int x;
-    if (LineColor == BLACK) x = map(B[i], minValueB[i], maxValueB[i], 1000, 0);
-    else x = map(B[i], minValueB[i], maxValueB[i], 0, 1000);
+    if (LineColor == BLACK)
+      x = map(B[i], minValueB[i], maxValueB[i], 1000, 0);
+    else
+      x = map(B[i], minValueB[i], maxValueB[i], 0, 1000);
     if (x < BACK_MIN) x = 0;
     if (x > BACK_MAX) x = 1000;
+    // if (x < 0)    x = 0;
+    // if (x > 1000) x = 1000;
     B[i] = x;
-  }
-}
-
-// เซนเซอร์กลางกลับด้านกับหน้า-หลัง
-void ReadCalibrateC() {
-  ReadC();
-  for (int i = 0; i < 2; i++) {
-    C[i] = constrain(C[i], minValueC[i], maxValueC[i]);
-    int x;
-    if (LineColor == BLACK) x = map(C[i], minValueC[i], maxValueC[i], 0, 1000);
-    else x = map(C[i], minValueC[i], maxValueC[i], 1000, 0);
-    if (x < CENTER_MIN) x = 0;
-    if (x > CENTER_MAX) x = 1000;
-    C[i] = x;
   }
 }
 
@@ -257,11 +333,10 @@ void ReadSensor() {
 }
 
 
-/* ==================================================================================================
- *  6) คาลิเบรตอัตโนมัติ / EEPROM
- * ================================================================================================== */
+// =====================================================================
+//  8) คาลิเบรตอัตโนมัติ
+// =====================================================================
 
-// เก็บค่า min / max จาก samples ครั้ง (เริ่ม min = 4095 สำหรับ ADC 12 บิต) แล้วบีบช่วงเข้า +60 / -80
 void caribrateSensorF(int pauseTime, int samples) {
   for (int i = 0; i < NUM_SENSORS; i++) {
     minValueF[i] = 4095;
@@ -278,25 +353,6 @@ void caribrateSensorF(int pauseTime, int samples) {
   for (int i = 0; i < NUM_SENSORS; i++) {
     minValueF[i] += 60;
     maxValueF[i] -= 80;
-  }
-}
-
-void caribrateSensorB(int pauseTime, int samples) {
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    minValueB[i] = 4095;
-    maxValueB[i] = 0;
-  }
-  for (int s = 0; s <= samples; s++) {
-    ReadB();
-    for (int i = 0; i < NUM_SENSORS; i++) {
-      if (B[i] < minValueB[i]) minValueB[i] = B[i];
-      if (B[i] > maxValueB[i]) maxValueB[i] = B[i];
-    }
-    delay(pauseTime);
-  }
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    minValueB[i] += 60;
-    maxValueB[i] -= 80;
   }
 }
 
@@ -319,17 +375,42 @@ void caribrateSensorC(int pauseTime, int samples) {
   }
 }
 
+void caribrateSensorB(int pauseTime, int samples) {
+  for (int i = 0; i < NUM_SENSORS; i++) {
+    minValueB[i] = 4095;
+    maxValueB[i] = 0;
+  }
+  for (int s = 0; s <= samples; s++) {
+    ReadB();
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      if (B[i] < minValueB[i]) minValueB[i] = B[i];
+      if (B[i] > maxValueB[i]) maxValueB[i] = B[i];
+    }
+    delay(pauseTime);
+  }
+  for (int i = 0; i < NUM_SENSORS; i++) {
+    minValueB[i] += 60;
+    maxValueB[i] -= 80;
+  }
+}
+
+
+// =====================================================================
+//  9) บันทึก / โหลดค่าคาลิเบรต (EEPROM)
+// =====================================================================
+
 #define EEPROM_CALIB_ADDR 0
-#define EEPROM_CALIB_MAGIC 0xCA11
+// 0xCA12: เปลี่ยนจาก int → int16_t (ขนาดข้อมูลลดครึ่ง) ค่าที่บันทึกด้วย 0xCA11 จะไม่ถูกโหลด ต้องคาลิเบรตใหม่ 1 ครั้ง
+#define EEPROM_CALIB_MAGIC 0xCA12
 
 struct SensorCalibData {
   uint16_t magic;
-  int minValueF[NUM_SENSORS];
-  int maxValueF[NUM_SENSORS];
-  int minValueB[NUM_SENSORS];
-  int maxValueB[NUM_SENSORS];
-  int minValueC[2];
-  int maxValueC[2];
+  int16_t minValueF[NUM_SENSORS];
+  int16_t maxValueF[NUM_SENSORS];
+  int16_t minValueB[NUM_SENSORS];
+  int16_t maxValueB[NUM_SENSORS];
+  int16_t minValueC[2];
+  int16_t maxValueC[2];
 };
 
 void SaveCalibrateToEEPROM() {
@@ -346,7 +427,6 @@ void SaveCalibrateToEEPROM() {
   EEPROM.commit();
 }
 
-// คืน false ถ้ายังไม่เคยคาลิเบรต (EEPROM ว่าง)
 bool LoadCalibrateFromEEPROM() {
   EEPROM.begin(sizeof(SensorCalibData));
   SensorCalibData data;
@@ -362,22 +442,17 @@ bool LoadCalibrateFromEEPROM() {
 }
 
 
-/* ==================================================================================================
- *  7) Serial debug — พิมพ์ค่าออก Serial Monitor (115200) ต่อเนื่อง (ไม่ออกจากฟังก์ชัน)
- * ================================================================================================== */
+// =====================================================================
+//  10) Serial Debug
+// =====================================================================
 
-void SerialPrintValues(const int *values, int count) {
-  for (int i = 0; i < count; i++) {
-    Serial.print(values[i]);
-    Serial.print("\t");
-  }
-}
-
-// ---------- ค่าดิบ ----------
 void Serial_FrontSensor() {
   while (1) {
     ReadSensorRaw();
-    SerialPrintValues(F, NUM_SENSORS);
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(F[i]);
+      Serial.print("\t");
+    }
     Serial.println();
     delay(50);
   }
@@ -386,7 +461,10 @@ void Serial_FrontSensor() {
 void Serial_BackSensor() {
   while (1) {
     ReadSensorRaw();
-    SerialPrintValues(B, NUM_SENSORS);
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(B[i]);
+      Serial.print("\t");
+    }
     Serial.println();
     delay(50);
   }
@@ -395,31 +473,22 @@ void Serial_BackSensor() {
 void Serial_CenterSensor() {
   while (1) {
     ReadSensorRaw();
-    SerialPrintValues(C, 2);
+    for (int i = 0; i < 2; i++) {
+      Serial.print(C[i]);
+      Serial.print("\t");
+    }
     Serial.println();
     delay(50);
   }
 }
 
-void SerialAllSensor() {
-  while (1) {
-    ReadSensorRaw();
-    Serial.print("F: ");
-    SerialPrintValues(F, NUM_SENSORS);
-    Serial.print(" | B: ");
-    SerialPrintValues(B, NUM_SENSORS);
-    Serial.print(" | C: ");
-    SerialPrintValues(C, 2);
-    Serial.println();
-    delay(100);
-  }
-}
-
-// ---------- ค่าที่คาลิเบรตแล้ว ----------
 void SerialCalibrate_FrontSensor() {
   while (1) {
     ReadSensor();
-    SerialPrintValues(F, NUM_SENSORS);
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(F[i]);
+      Serial.print("\t");
+    }
     Serial.println();
     delay(100);
   }
@@ -428,7 +497,10 @@ void SerialCalibrate_FrontSensor() {
 void SerialCalibrate_BackSensor() {
   while (1) {
     ReadSensor();
-    SerialPrintValues(B, NUM_SENSORS);
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(B[i]);
+      Serial.print("\t");
+    }
     Serial.println();
     delay(100);
   }
@@ -437,7 +509,40 @@ void SerialCalibrate_BackSensor() {
 void SerialCalibrate_CenterSensor() {
   while (1) {
     ReadSensor();
-    SerialPrintValues(C, 2);
+    for (int i = 0; i < 2; i++) {
+      Serial.print(C[i]);
+      Serial.print("\t");
+    }
+    Serial.println();
+    delay(100);
+  }
+}
+
+void SerialAllSensor() {
+  while (1) {
+    ReadSensorRaw();
+
+    // ---------- FRONT ----------
+    Serial.print("F: ");
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(F[i]);
+      Serial.print("\t");
+    }
+
+    // ---------- BACK ----------
+    Serial.print(" | B: ");
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(B[i]);
+      Serial.print("\t");
+    }
+
+    // ---------- CENTER ----------
+    Serial.print(" | C: ");
+    for (int i = 0; i < 2; i++) {
+      Serial.print(C[i]);
+      Serial.print("\t");
+    }
+
     Serial.println();
     delay(100);
   }
@@ -446,12 +551,28 @@ void SerialCalibrate_CenterSensor() {
 void SerialCalibrate_AllSensor() {
   while (1) {
     ReadSensor();
+
+    // ---------- FRONT ----------
     Serial.print("F: ");
-    SerialPrintValues(F, NUM_SENSORS);
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(F[i]);
+      Serial.print("\t");
+    }
+
+    // ---------- BACK ----------
     Serial.print(" | B: ");
-    SerialPrintValues(B, NUM_SENSORS);
+    for (int i = 0; i < NUM_SENSORS; i++) {
+      Serial.print(B[i]);
+      Serial.print("\t");
+    }
+
+    // ---------- CENTER ----------
     Serial.print(" | C: ");
-    SerialPrintValues(C, 2);
+    for (int i = 0; i < 2; i++) {
+      Serial.print(C[i]);
+      Serial.print("\t");
+    }
+
     Serial.println();
     delay(100);
   }
