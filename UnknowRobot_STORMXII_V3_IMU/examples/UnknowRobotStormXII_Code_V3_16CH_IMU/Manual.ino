@@ -50,7 +50,7 @@
 // TurnSpeedLeft(speedL, speedR, ms);    // ความเร็วล้อตอนเลี้ยวซ้ายล้อเดียว + เวลาหน่วงก่อนเลี้ยว (ใช้กับ select 'q')
 // TurnSpeedRight(speedL, speedR, ms);   // ความเร็วล้อตอนเลี้ยวขวาล้อเดียว + เวลาหน่วงก่อนเลี้ยว (ใช้กับ select 'e')
 // SetSensorTurnLeftRight(5, 10);        // เซนเซอร์หน้าที่หยุดเลี้ยว TurnLeft (F[0..5]) / TurnRight (F[15..10])
-// SetSensorTurnLeftRight_B(5, 10);      // เซนเซอร์หลังที่หยุดเลี้ยว TurnLeft_B (B[0..5]) / TurnRight_B (B[15..10])
+// SetSensorTurnLeftRightB(5, 10);      // เซนเซอร์หลังที่หยุดเลี้ยว TurnLeftB (B[0..5]) / TurnRightB (B[15..10])
 // SetToCenterSpeed(speed);              // ความเร็วตอนเดินเข้ากลางหุ่น (ToCenter / BackCenter)
 // SetTurnSpeed(speed);                  // ความเร็วหมุนเข้าแยก (SpinL / SpinR เมื่อไม่ระบุความเร็ว)
 //
@@ -63,6 +63,8 @@
 // ModeSpdPID(mode, max, min);                             // โหมดจำกัดกำลังล้อตอนวิ่งตามเส้น (โหมด 0-3 เหมือน ModeSpdGyro ในหมวด 8.6)
 // set_speed_scale(fw, bw);                                // ตัวคูณระยะทางของ FFcm / BBcm (ค่าเริ่มต้น 1.75, 1.75)
 //                                                         //   หุ่นเดินเกินระยะ ให้เพิ่มค่า | เดินไม่ถึงระยะ ให้ลดค่า
+// set_pid_mode2_limit(up, down);                          // ModeSpdPID โหมด 2: -(Speed+down)..(Speed+up) (ค่าเริ่มต้น 20, 20)
+// set_pid_lf(kp, kd);  set_pid_lb(kp, kd);                // PID ของ LF / LB (ค่าเริ่มต้น 0.015, 0.10)
 //
 // ---------- ตารางค่าตามความเร็ว (SPD_10 ... SPD_100) ใน Setting.ino ----------
 // Set_KP_KD(SPD_50, kp, kd);                  // ค่า KP, KD เดินหน้า ที่ความเร็วนั้น
@@ -257,7 +259,7 @@
 //
 // ---------- เลี้ยวล้อเดียว (เซนเซอร์ที่หยุดตั้งด้วย SetSensorTurnLeftRight ในหมวด 0) ----------
 // TurnLeft(); / TurnRight();       // เลี้ยวหน้าซ้าย / ขวา (เซนเซอร์หน้า) — เลี้ยวจน F[0..3] / F[15..12] พ้นเส้นเดิมก่อน
-// TurnLeft_B(); / TurnRight_B();   // เลี้ยวถอยหลังซ้าย / ขวา (เซนเซอร์หลัง)
+// TurnLeftB(); / TurnRightB();     // เลี้ยวถอยหลังซ้าย / ขวา (เซนเซอร์หลัง) — เลี้ยวจน B[0..3] / B[15..12] พ้นเส้นเดิมก่อน
 //
 // ตัวอย่าง:
 //   SpinL();       // หมุนซ้ายด้วยความเร็วมาตรฐาน
@@ -345,18 +347,30 @@
 // FFtimerG / BBtimerG / FFcmG / BBcmG / FFcmGS / BBcmGS(..., select, dir);  // มี select ด้วย
 // เช่น BBcmG(50, 30, 0) = ถอยหลัง 30 ซม. โดยหน้าหุ่นหันทิศ 0
 //
+// --- วิ่งตามเส้นจนหันถึงทิศ (ใช้กับเส้นโค้ง) ---
+// FFdir(speed, dir [, select]);             BBdir(speed, dir [, select]);             // เช่น FFdir(50, 270);
+// FFdir(speed, kp, [kd,] dir [, select]);   BBdir(speed, kp, [kd,] dir [, select]);   // กำหนด kp / kd เอง (kp ต้องมีจุดทศนิยม)
+// FFdirCirCleL(speed, dir [, select]);      BBdirCirCleL(...);   // วิ่งกินโค้งซ้าย (set_position_line_l) จนหันถึงทิศ
+// FFdirCirCleR(speed, dir [, select]);      BBdirCirCleR(...);   // วิ่งกินโค้งขวา (set_position_line_r) จนหันถึงทิศ
+// FFdirCirCleL(speed, kp, [kd,] dir [, select]);                 // ...CirCleR / BBdirCirCleL / BBdirCirCleR แบบเดียวกัน
+// set_line_dir_threshold(5.0);              // ระยะยอมรับ (องศา) ค่าเริ่มต้น 5
+// ไม่ใส่ select = จบแล้วมอเตอร์ยังหมุนอยู่ ต่อคำสั่งถัดไปได้ทันที
+//
 // ตัวอย่าง: เริ่มหันทิศ 0 → หมุนไปทิศ 90 → วิ่งตรงไปทิศ 180 อีก 80 ซม.
 //   resetAngle();
 //   spinDirection(90);
 //   FFcmG(50, 80, 180);
 //
 // ---------- 8.5 ค้างองศาอยู่กับที่ (หยุดนิ่งแต่กันหุ่นเบี้ยว) ----------
-// SetG(ms);    // ค้างที่มุมอ้างอิง (current_degree)
-// SetBG(ms);   // เหมือน SetG แต่กลับทิศแรงหมุน (ใช้ตอนถอยหลัง)
-// SetFG(ms);   // จำมุมจริงตอนนี้ แล้วค้างไว้ (SetHoldAngle() = จำมุมอย่างเดียว)
+// SetG(ms);    setg(ms);     // ค้างที่มุมอ้างอิง (current_degree)
+// SetGB(ms);   setgb(ms);    // เหมือน SetG แบบถอยหลัง
+// SetFG(ms);   setfg(ms);    // จำมุมจริงตอนนี้ แล้วค้างไว้ (SetHoldAngle() = จำมุมอย่างเดียว)
+// SetBG(ms);   setbg(ms);    // เหมือน SetFG แบบถอยหลัง (จำมุม ณ ตอนเรียก)
+// HoldAngle(); HoldAngleB(); HoldAngleF(); HoldAngleBF();   // ใช้ใน loop เพื่อค้างมุม
 //
 // ---------- 8.6 ปรับค่า Gyro (ใส่ใน setup_robot() ของ Setting.ino) ----------
-// SetGyroTurn(kp, kd, maxSpd, minSpd, smallAngle, stopThr);   // เลี้ยวล้อเดียว (turnDegree / turnDirection / TurnLG ...)
+// SetGyroTurn(kp, kd, maxSpd, minSpd, smallAngle, stopThr);   // เลี้ยวล้อเดียวเดินหน้า (turnDegree / turnDirection / TurnLG ...)
+// SetGyroTurnB(kp, kd, maxSpd, minSpd, smallAngle, stopThr);  // เลี้ยวล้อเดียวถอยหลัง (turnDegreeB / turnDirectionB / TurnLBG ...)
 // SetGyroSpin(kp, kd, maxSpd, minSpd, smallAngle, stopThr);   // หมุนอยู่กับที่ (spinDegree / spinDirection / SpinLG ...)
 //     maxSpd       ความเร็วที่ใช้เมื่อไม่ระบุ speed ในคำสั่ง
 //     minSpd       ความเร็วต่ำสุดตอนใกล้ถึงเป้า (กันหุ่นค้างไม่ถึงองศา)
@@ -368,9 +382,11 @@
 // ModeSpdGyro(modeF, modeB, max, min);   // แยกโหมดเดินหน้า / ถอยหลัง
 //     mode 0   ไม่เกิน max, ล้อที่ติดลบ → min
 //     mode 1   อยู่ในช่วง min..max
-//     mode 2   อยู่ในช่วง -(speed+20)..speed+20 (ถอยล้อได้เต็มที่)
+//     mode 2   อยู่ในช่วง -(speed+down)..speed+up (ถอยล้อได้เต็มที่)
 //     mode 3   ไม่เกิน max, ล้อที่ติดลบ → -speed
-//     mode 4   ไม่เกิน speed ที่สั่ง + 20, ล้อที่ติดลบ → min  (ค่าเริ่มต้น, min = 0 คือไม่ถอยล้อ)
+//     mode 4   ไม่เกิน speed ที่สั่ง + up, ล้อที่ติดลบ → min  (ค่าเริ่มต้น, min = 0 คือไม่ถอยล้อ)
+// set_gyro_mode2_limit(up, down);        // โหมด 2: -(Speed+down)..(Speed+up) (ค่าเริ่มต้น 20, 20)
+// set_gyro_mode4_limit(up);              // โหมด 4: ..(Speed+up) (ค่าเริ่มต้น 20)
 //
 // --- ตัวคูณระยะทางของคำสั่งวิ่งตรงตามระยะ (หุ่นเดินเกินระยะ ให้เพิ่มค่า | เดินไม่ถึงระยะ ให้ลดค่า) ---
 // set_speed_scale_ff_g(normal, short);   // FFcmG: ระยะ >= 30 cm (มีเร่ง/ชะลอ), ระยะ < 30 cm   ค่าเริ่มต้น (0.99, 1.5)
@@ -466,9 +482,9 @@
 // 'c' / 'C'   // ถอยเข้ากลางหุ่น แล้วหยุด
 // 'p' 'P'     // ถอยผ่านแยกต่อ
 // 's' / 'S'   // เบรกหยุด
-// 'e' / 'E'   // เลี้ยวถอยหลังล้อเดียว TurnLeft_B()
-// 'q' / 'Q'   // เลี้ยวถอยหลังล้อเดียว TurnRight_B()
-// 'g' / 'G'   // ค้างมุมอยู่กับที่ SetBG() นาน = ค่า speed (ms)
+// 'e' / 'E'   // เลี้ยวถอยหลังล้อเดียว TurnLeftB()
+// 'q' / 'Q'   // เลี้ยวถอยหลังล้อเดียว TurnRightB()
+// 'g' / 'G'   // ค้างมุมอยู่กับที่ SetFG() นาน = ค่า speed (ms)
 //
 // ---------- 10.3 วิ่งตรงด้วย Gyro ไปข้างหน้า (FFtimerG / FFcmG / FFcmGS / FFBG) ----------
 // 'l' / 'L'   // เข้ากลางหุ่น แล้ว spinDegree(-90)  /  'L' = หมุนทันทีไม่เข้ากลาง

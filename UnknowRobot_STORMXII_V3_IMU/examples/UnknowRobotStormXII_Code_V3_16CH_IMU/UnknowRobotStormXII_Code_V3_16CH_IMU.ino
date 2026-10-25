@@ -29,7 +29,7 @@ void setup() {
   TurnSpeedLeft(25, 80, 60);        // ความเร็วเลี้ยวซ้าย
   TurnSpeedRight(80, 25, 60);       // ความเร็วเลี้ยวขวา
   SetSensorTurnLeftRight(5, 10);    // เซนเซอร์หน้าที่ใช้หยุดเลี้ยว TurnLeft (F[0..5]) / TurnRight (F[15..10])
-  SetSensorTurnLeftRight_B(5, 10);  // เซนเซอร์หลังที่ใช้หยุดเลี้ยว TurnLeft_B (B[0..5]) / TurnRight_B (B[15..10])
+  SetSensorTurnLeftRightB(5, 10);   // เซนเซอร์หลังที่ใช้หยุดเลี้ยว TurnLeftB (B[0..5]) / TurnRightB (B[15..10])
   SetToCenterSpeed(30);             // ความเร็วเข้ากลางหุ่น
   SetTurnSpeed(50);                 // ความเร็วเลี้ยวเข้าแยก
   /////////////////////////////////////////

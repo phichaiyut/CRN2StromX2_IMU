@@ -52,6 +52,8 @@ uint16_t tct_delay_break = 0;
 uint16_t bct_delay_break = 0;
 float slow_kp_f = 0.014, slow_kd_f = 0.14;
 float slow_kp_b = 0.014, slow_kd_b = 0.14;
+float lf_kp = 0.015, lf_kd = 0.10;  // PID อยู่กับที่ LF()
+float lb_kp = 0.015, lb_kd = 0.10;  // PID อยู่กับที่ LB()
 uint8_t line_centor = 0;  // 0 / 1
 
 // ---------- ตำแหน่งเส้น / ช่วงเซนเซอร์ที่ใช้วิ่ง ----------
@@ -64,6 +66,7 @@ uint8_t setsensortracklineL = 0, setsensortracklineR = 15;
 int8_t MaxSpeed = 100;
 int8_t MinSpeed = -5;
 uint8_t ModePidStatus = 0;
+int8_t pid_mode2_up = 20, pid_mode2_down = 20;  // ModePidStatus 2: ช่วงกำลังล้อ = -(Speed+down)..(Speed+up)
 
 // ---------- ตัวคูณแปลงความเร็ว → ระยะทาง ของ FFcm / BBcm (set_speed_scale) ----------
 float speed_scale_ff = 1.75;  // <-- ใช้ค่าที่คำนวณจากการวัดจริง
@@ -102,7 +105,7 @@ void SetSensorTurnLeftRight(int l, int r) {
   RChTurn = r;
 }
 
-void SetSensorTurnLeftRight_B(int l, int r) {
+void SetSensorTurnLeftRightB(int l, int r) {
   LChTurnB = l;
   RChTurnB = r;
 }
@@ -128,6 +131,21 @@ void TurnSpeedRight(int l, int r, int de) {
 void set_speed_scale(float fw, float bw) {
   speed_scale_ff = fw;
   speed_scale_bb = bw;
+}
+
+void set_pid_lf(float Kp, float Kd) {
+  lf_kp = Kp;
+  lf_kd = Kd;
+}
+
+void set_pid_lb(float Kp, float Kd) {
+  lb_kp = Kp;
+  lb_kd = Kd;
+}
+
+void set_pid_mode2_limit(int up, int down) {
+  pid_mode2_up = up;
+  pid_mode2_down = down;
 }
 
 void ModeSpdPID(int moD, int maX, int miN) {
@@ -179,6 +197,7 @@ void set_line_center(int x) {
 // =====================================================================
 //  3) อ่านตำแหน่งเส้น (Line Position)
 // =====================================================================
+
 
 int readPositionF(int Track, int noise) {
   int i;
@@ -300,10 +319,10 @@ void ClampPower(int &LeftPower, int &RightPower, int SpeedL, int SpeedR) {
       if (RightPower < MinSpeed) RightPower = MinSpeed;
       break;
     case 2:
-      if (LeftPower > SpeedL) LeftPower = SpeedL;
-      if (LeftPower < -SpeedL) LeftPower = -SpeedL;
-      if (RightPower > SpeedR) RightPower = SpeedR;
-      if (RightPower < -SpeedR) RightPower = -SpeedR;
+      if (LeftPower > SpeedL + pid_mode2_up) LeftPower = SpeedL + pid_mode2_up;
+      if (LeftPower < -SpeedL - pid_mode2_down) LeftPower = -SpeedL - pid_mode2_down;
+      if (RightPower > SpeedR + pid_mode2_up) RightPower = SpeedR + pid_mode2_up;
+      if (RightPower < -SpeedR - pid_mode2_down) RightPower = -SpeedR - pid_mode2_down;
       break;
     case 3:
       if (LeftPower > MaxSpeed) LeftPower = MaxSpeed;
@@ -631,13 +650,13 @@ void BackCenter() {
 // จัดหุ่นให้ตรงเส้นอยู่กับที่ด้วย PID (ความเร็วฐาน 0) เป็นเวลา totalTime ms
 void LF(int totalTime) {
   unsigned long endTime = millis() + totalTime;
-  while (millis() <= endTime) PIDF(0, 0, 0.015, 0.10);
+  while (millis() <= endTime) PIDF(0, 0, lf_kp, lf_kd);
   MotorStop();
 }
 
 void LB(int totalTime) {
   unsigned long endTime = millis() + totalTime;
-  while (millis() <= endTime) PIDB(0, 0, 0.015, 0.10);
+  while (millis() <= endTime) PIDB(0, 0, lb_kp, lb_kd);
   MotorStop();
 }
 
@@ -814,7 +833,14 @@ void SpinR2() {
 // ---------- เลี้ยวล้อเดียว ----------
 
 // เลี้ยวล้อเดียว: หมุนจนเซนเซอร์หลังเจอเส้นไล่ทีละตัว B[0..LChTurnB] (ซ้าย) / B[15..RChTurnB] (ขวา)
-void TurnLeft_B() {
+void TurnLeftB() {
+  for (int i = 0; i <= 3; i++) {
+    do {
+      Motor(-LTurnSpdL, LTurnSpdR);
+      delayMicroseconds(80);
+      ReadCalibrateB();
+    } while (B[i] >= Ref);
+  }
   for (int i = 0; i <= LChTurnB; i++) {
     do {
       Motor(-LTurnSpdL, LTurnSpdR);
@@ -825,7 +851,14 @@ void TurnLeft_B() {
   MotorStop();
 }
 
-void TurnRight_B() {
+void TurnRightB() {
+  for (int i = 15; i >= 12; i--) {
+    do {
+      Motor(RTurnSpdL, -RTurnSpdR);
+      delayMicroseconds(80);
+      ReadCalibrateB();
+    } while (B[i] >= Ref);
+  }
   for (int i = 15; i >= RChTurnB; i--) {
     do {
       Motor(RTurnSpdL, -RTurnSpdR);
@@ -1185,7 +1218,7 @@ void TrackSelectB(int spd, char x) {
       }
     }
     delay(TurnDelayL);
-    TurnLeft_B();
+    TurnLeftB();
     BBtimer(0, 5);
   } else if (x == 'E') {
     ToBack();
@@ -1198,7 +1231,7 @@ void TrackSelectB(int spd, char x) {
       }
     }
     delay(TurnDelayL);
-    TurnLeft_B();
+    TurnLeftB();
     BBtimer(0, 5);
   } else if (x == 'q') {
     for (int n = 0; n < 2; n++) {
@@ -1210,7 +1243,7 @@ void TrackSelectB(int spd, char x) {
       }
     }
     delay(TurnDelayR);
-    TurnRight_B();
+    TurnRightB();
     BBtimer(0, 5);
   } else if (x == 'Q') {
     ToBack();
@@ -1223,13 +1256,13 @@ void TrackSelectB(int spd, char x) {
       }
     }
     delay(TurnDelayR);
-    TurnRight_B();
+    TurnRightB();
     BBtimer(0, 5);
   } else if (x == 'g') {
-    SetBG(spd);
+    SetFG(spd);
   } else if (x == 'G') {
     ToBack();
-    SetBG(spd);
+    SetFG(spd);
   } else {
     MotorStop();
   }
