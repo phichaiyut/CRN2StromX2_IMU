@@ -56,7 +56,7 @@ float prevErrHoldB = 0;
 float prevErrHoldF = 0;
 float prevErrHoldBF = 0;
 
-// ---------- หมุน / เลี้ยว — ปรับได้ด้วย SetGyroTurn / SetGyroSpin ใน Setting.ino ----------
+// ---------- หมุน / เลี้ยว — ปรับได้ด้วย SetGyroTurn / SetGyroTurnB / SetGyroSpin ใน Setting.ino ----------
 float gyro_Kp_Spin = 0.75f;
 float gyro_Kd_Spin = 0.9f;
 int8_t gyro_MaxSpd_Spin = 40;  // ความเร็ว 0..100
@@ -115,6 +115,9 @@ int8_t gyro_BounceSpd_turn = 12;
 uint16_t gyro_BounceMs_turn = 5;
 int8_t gyro_BounceSpd_turn_b = 12;
 uint16_t gyro_BounceMs_turn_b = 5;
+
+// ---------- วิ่งตามเส้นจนถึงทิศ (FFdir / BBdir) ----------
+float line_dir_threshold = 5.0f;  // ถือว่าถึงทิศเมื่อ |error| <= ค่านี้ (องศา)
 
 
 // =====================================================================
@@ -181,6 +184,8 @@ void resetAngles() {
 //  4) ค้างมุมอยู่กับที่ (Hold Angle)
 // =====================================================================
 
+// ---------- PD ค้างมุม (เรียกใน loop) ----------
+
 void HoldAngle() {
   float error = current_degree - angleRead();
   // wrap -180 ถึง 180
@@ -201,7 +206,7 @@ void HoldAngleB() {
   float d = error - prevErrHoldB;
   int power = (error * kpBHold) + (d * kdBHold);
   power = constrain(power, -50, 50);  // แรงหมุน
-  Motor(power, -power);               // หมุนอยู่กับที่
+  Motor(-power, power);               // หมุนอยู่กับที่ (error กลับด้าน จึงสลับล้อ ให้หมุนแก้ทางเดียวกับ HoldAngle)
   prevErrHoldB = error;
 }
 
@@ -223,20 +228,6 @@ void HoldAngleF() {
   prevErrHoldF = error;
 }
 
-void SetFG(int totalTime) {
-  BZon();
-  SetHoldAngle();
-  unsigned long endTime = millis() + totalTime;
-  while (millis() <= endTime) {
-    HoldAngleF();
-  }
-  BZoff();
-}
-
-void setfg(int totalTime) {
-  SetFG(totalTime);
-}
-
 void HoldAngleBF() {
   float error = angleRead() - holdAngle;
   // wrap -180 ถึง 180
@@ -249,22 +240,7 @@ void HoldAngleBF() {
   prevErrHoldBF = error;
 }
 
-// ล็อกมุมแบบถอยหลัง: จำมุม ณ ตอนเรียก (เหมือน SetFG)
-void SetBG(int totalTime) {
-  BZon();
-  SetHoldAngle();
-  prevErrHoldBF = 0;
-  unsigned long endTime = millis() + totalTime;
-  while (millis() <= endTime) {
-    HoldAngleBF();
-  }
-  BZoff();
-}
-
-void setbg(int totalTime) {
-  SetBG(totalTime);
-}
-
+// ---------- ค้างมุมที่ current_degree ----------
 void SetG(int totalTime) {
   BZon();
   unsigned long endTime = millis() + totalTime;
@@ -284,6 +260,30 @@ void SetGB(int totalTime) {
   BZoff();
 }
 
+// ---------- ค้างมุม ณ ตอนเรียก ----------
+void SetFG(int totalTime) {
+  BZon();
+  SetHoldAngle();
+  unsigned long endTime = millis() + totalTime;
+  while (millis() <= endTime) {
+    HoldAngleF();
+  }
+  BZoff();
+}
+
+// ล็อกมุมแบบถอยหลัง: จำมุม ณ ตอนเรียก (เหมือน SetFG)
+void SetBG(int totalTime) {
+  BZon();
+  SetHoldAngle();
+  prevErrHoldBF = 0;
+  unsigned long endTime = millis() + totalTime;
+  while (millis() <= endTime) {
+    HoldAngleBF();
+  }
+  BZoff();
+}
+
+// ---------- ชื่อย่อ ----------
 void setg(int time) {
   SetG(time);
 }
@@ -292,12 +292,21 @@ void setgb(int time) {
   SetGB(time);
 }
 
+void setfg(int totalTime) {
+  SetFG(totalTime);
+}
+
+void setbg(int totalTime) {
+  SetBG(totalTime);
+}
+
 
 // =====================================================================
 //  5) ตั้งค่า Gyro (เรียกใน Setting.ino)
 // =====================================================================
 
 // ---------- PID หมุน / เลี้ยว / วิ่งตรง ----------
+
 void SetGyroTurn(float kp, float kd, int maxSpd, int minSpd, float smallAngle, float stopThr) {
   gyro_Kp_Turn = kp;
   gyro_Kd_Turn = kd;
@@ -412,12 +421,18 @@ void set_brake_turn_b_gyro(int spd, int t) {
   gyro_BounceMs_turn_b = t;
 }
 
+// ---------- วิ่งตามเส้นจนถึงทิศ (FFdir / BBdir) ----------
+void set_line_dir_threshold(float thr) {
+  line_dir_threshold = thr;
+}
+
 
 // =====================================================================
 //  6) หมุน / เลี้ยว ตามองศา
 // =====================================================================
 
 // ---------- หมุนอยู่กับที่ (spin) ----------
+
 void spinDegree(int Speed, int relative_degree) {
   int min_speed = gyro_MinSpd_Spin;
   int max_speed = Speed;
@@ -683,6 +698,7 @@ void rotateDegree(int SpeedL, int SpeedR, int relative_degree) {
 // =====================================================================
 
 // ---------- ทางเดียว ----------
+
 void SpinLG(int Angle) {
   spinDegree(-abs(Angle));
 }
@@ -847,6 +863,7 @@ void TurnRLBG(int spd, int Angle, int Angle2) {
 // =====================================================================
 
 
+
 // คำนวณมุมที่ต้องหมุนจากมุมปัจจุบันไปยังทิศทางสัมบูรณ์ (ทางที่สั้นที่สุด)
 int relativeToDirection(int direction) {
   float relative = fmod((float)direction, 360.0f) - angleReadFresh();
@@ -910,6 +927,7 @@ void SetDirectionG(int direction) {
 // =====================================================================
 
 // ---------- PD คุมทิศ ----------
+
 
 // จำกัดค่า LeftPower/RightPower ของ gyro ตามโหมด
 void ClampGyroPower(float &LeftPower, float &RightPower, int SpeedL, int SpeedR, int mode) {
@@ -1087,6 +1105,7 @@ void BackToFrontG() {
 //  10) คำสั่งเมื่อเจอแยก (Gyro)
 // =====================================================================
 
+
 void TrackSelectG(int spd, char select) {
   if (select == 'L') {
     spinDegree(-90);
@@ -1246,6 +1265,7 @@ void TrackSelectGB(int spd, char select) {
 //  11) วิ่งตรงด้วย Gyro + คำสั่งเจอแยก
 // =====================================================================
 
+
 void FFBG(int Speed, char select) {
   BaseSpeed = Speed;
   InitialSpeed();
@@ -1282,6 +1302,7 @@ void BBtimerG(int Speed, int totalTime, char select) {
 // =====================================================================
 //  12) วิ่งตามระยะทางด้วย Gyro (cm)
 // =====================================================================
+
 
 void FFcmGS(int Speed, float distance) {
   BaseSpeed = Speed;
@@ -1482,6 +1503,7 @@ void BBcmG(int Speed, float distance_cm, char select) {
 // =====================================================================
 
 // ---------- ไม่มีคำสั่งเจอแยก ----------
+
 void FFtimerG(int Speed, int totalTime, int direction) {
   SetDirectionG(direction);
   FFtimerG(Speed, totalTime);
@@ -1561,19 +1583,16 @@ void BBcmG(int Speed, float distance_cm, char select, int direction) {
   TrackSelectGB(Speed, select);
 }
 
+
 // =====================================================================
 //  14) วิ่งตามเส้นจนหันถึงทิศ (FFdir / BBdir)
 // =====================================================================
+
 // วิ่งตามเส้น (PIDF / PIDB) ไปเรื่อย ๆ จนมุมไจโรถึงทิศสัมบูรณ์ (0 / 90 / 180 / 270 อ้างอิงตอน resetAngles)
 // ใช้กับเส้นโค้ง เช่น FFdir(50, 270); = วิ่งตามเส้นโค้งไปจนหุ่นหันไปทิศ 270
 // ไม่มี select: จบแล้วมอเตอร์ยังหมุนอยู่ ต่อคำสั่งถัดไปได้ทันที
 
-float line_dir_threshold = 5.0f;  // ถือว่าถึงทิศเมื่อ |error| <= ค่านี้ (องศา)
-
-void set_line_dir_threshold(float thr) {
-  line_dir_threshold = thr;
-}
-
+// ---------- ตัวช่วย ----------
 // true = มุมปัจจุบันถึงทิศ direction แล้ว (อยู่ในช่วง threshold หรือหมุนเลยเป้าไปแล้ว)
 static bool reachedDirection(int direction, float &previous_error) {
   float error = wrap180(fmodf((float)direction, 360.0f) - angleRead());
@@ -1604,6 +1623,7 @@ static void BBdir_pid(int Speed, int direction, float Kp, float Kd) {
   while (!reachedDirection(direction, previous_error)) PIDB(BackLeftBaseSpeed, BackRightBaseSpeed, Kp, Kd);
 }
 
+// ---------- FFdir / BBdir: (speed, [kp, [kd,]] ทิศ [, select])  ใส่ค่าติดลบ = ใช้ค่าจากตาราง ----------
 void FFdir(int Speed, int direction) {
   FFdir_pid(Speed, direction, -1, -1);
 }
@@ -1622,7 +1642,6 @@ void BBdir(int Speed, int direction, char select) {
   TrackSelectB(Speed, select);
 }
 
-// --- กำหนด Kp / Kd เอง: (speed, kp, [kd,] ทิศ [, select]) ---
 void FFdir(int Speed, float Kp, int direction) {
   FFdir_pid(Speed, direction, Kp, -1);
 }
@@ -1659,33 +1678,11 @@ void BBdir(int Speed, float Kp, float Kd, int direction, char select) {
   TrackSelectB(Speed, select);
 }
 
-// --- วิ่งโค้ง CirCleL = เบี่ยงซ้าย (set_position_l), CirCleR = เบี่ยงขวา (set_position_r) ---
-
+// ---------- วิ่งโค้ง: CirCleL = เบี่ยงซ้าย (set_position_l), CirCleR = เบี่ยงขวา (set_position_r) ----------
 void FFdirCirCleL(int Speed, int direction) {
   int temp = set_position;
   set_position = set_position_l;
   FFdir(Speed, direction);
-  set_position = temp;
-}
-
-void FFdirCirCleR(int Speed, int direction) {
-  int temp = set_position;
-  set_position = set_position_r;
-  FFdir(Speed, direction);
-  set_position = temp;
-}
-
-void BBdirCirCleL(int Speed, int direction) {
-  int temp = set_position;
-  set_position = set_position_l;
-  BBdir(Speed, direction);
-  set_position = temp;
-}
-
-void BBdirCirCleR(int Speed, int direction) {
-  int temp = set_position;
-  set_position = set_position_r;
-  BBdir(Speed, direction);
   set_position = temp;
 }
 
@@ -1696,54 +1693,10 @@ void FFdirCirCleL(int Speed, int direction, char select) {
   set_position = temp;
 }
 
-void FFdirCirCleR(int Speed, int direction, char select) {
-  int temp = set_position;
-  set_position = set_position_r;
-  FFdir(Speed, direction, select);
-  set_position = temp;
-}
-
-void BBdirCirCleL(int Speed, int direction, char select) {
-  int temp = set_position;
-  set_position = set_position_l;
-  BBdir(Speed, direction, select);
-  set_position = temp;
-}
-
-void BBdirCirCleR(int Speed, int direction, char select) {
-  int temp = set_position;
-  set_position = set_position_r;
-  BBdir(Speed, direction, select);
-  set_position = temp;
-}
-
-// --- *dirCirCleL/R แบบกำหนด Kp / Kd เอง: (speed, kp, [kd,] ทิศ [, select]) ---
-
 void FFdirCirCleL(int Speed, float Kp, float Kd, int direction) {
   int temp = set_position;
   set_position = set_position_l;
   FFdir(Speed, Kp, Kd, direction);
-  set_position = temp;
-}
-
-void FFdirCirCleR(int Speed, float Kp, float Kd, int direction) {
-  int temp = set_position;
-  set_position = set_position_r;
-  FFdir(Speed, Kp, Kd, direction);
-  set_position = temp;
-}
-
-void BBdirCirCleL(int Speed, float Kp, float Kd, int direction) {
-  int temp = set_position;
-  set_position = set_position_l;
-  BBdir(Speed, Kp, Kd, direction);
-  set_position = temp;
-}
-
-void BBdirCirCleR(int Speed, float Kp, float Kd, int direction) {
-  int temp = set_position;
-  set_position = set_position_r;
-  BBdir(Speed, Kp, Kd, direction);
   set_position = temp;
 }
 
@@ -1754,10 +1707,68 @@ void FFdirCirCleL(int Speed, float Kp, float Kd, int direction, char select) {
   set_position = temp;
 }
 
+void FFdirCirCleL(int Speed, float Kp, int direction) {
+  FFdirCirCleL(Speed, Kp, -1.0f, direction);
+}
+
+void FFdirCirCleL(int Speed, float Kp, int direction, char select) {
+  FFdirCirCleL(Speed, Kp, -1.0f, direction, select);
+}
+
+void FFdirCirCleR(int Speed, int direction) {
+  int temp = set_position;
+  set_position = set_position_r;
+  FFdir(Speed, direction);
+  set_position = temp;
+}
+
+void FFdirCirCleR(int Speed, int direction, char select) {
+  int temp = set_position;
+  set_position = set_position_r;
+  FFdir(Speed, direction, select);
+  set_position = temp;
+}
+
+void FFdirCirCleR(int Speed, float Kp, float Kd, int direction) {
+  int temp = set_position;
+  set_position = set_position_r;
+  FFdir(Speed, Kp, Kd, direction);
+  set_position = temp;
+}
+
 void FFdirCirCleR(int Speed, float Kp, float Kd, int direction, char select) {
   int temp = set_position;
   set_position = set_position_r;
   FFdir(Speed, Kp, Kd, direction, select);
+  set_position = temp;
+}
+
+void FFdirCirCleR(int Speed, float Kp, int direction) {
+  FFdirCirCleR(Speed, Kp, -1.0f, direction);
+}
+
+void FFdirCirCleR(int Speed, float Kp, int direction, char select) {
+  FFdirCirCleR(Speed, Kp, -1.0f, direction, select);
+}
+
+void BBdirCirCleL(int Speed, int direction) {
+  int temp = set_position;
+  set_position = set_position_l;
+  BBdir(Speed, direction);
+  set_position = temp;
+}
+
+void BBdirCirCleL(int Speed, int direction, char select) {
+  int temp = set_position;
+  set_position = set_position_l;
+  BBdir(Speed, direction, select);
+  set_position = temp;
+}
+
+void BBdirCirCleL(int Speed, float Kp, float Kd, int direction) {
+  int temp = set_position;
+  set_position = set_position_l;
+  BBdir(Speed, Kp, Kd, direction);
   set_position = temp;
 }
 
@@ -1768,6 +1779,35 @@ void BBdirCirCleL(int Speed, float Kp, float Kd, int direction, char select) {
   set_position = temp;
 }
 
+void BBdirCirCleL(int Speed, float Kp, int direction) {
+  BBdirCirCleL(Speed, Kp, -1.0f, direction);
+}
+
+void BBdirCirCleL(int Speed, float Kp, int direction, char select) {
+  BBdirCirCleL(Speed, Kp, -1.0f, direction, select);
+}
+
+void BBdirCirCleR(int Speed, int direction) {
+  int temp = set_position;
+  set_position = set_position_r;
+  BBdir(Speed, direction);
+  set_position = temp;
+}
+
+void BBdirCirCleR(int Speed, int direction, char select) {
+  int temp = set_position;
+  set_position = set_position_r;
+  BBdir(Speed, direction, select);
+  set_position = temp;
+}
+
+void BBdirCirCleR(int Speed, float Kp, float Kd, int direction) {
+  int temp = set_position;
+  set_position = set_position_r;
+  BBdir(Speed, Kp, Kd, direction);
+  set_position = temp;
+}
+
 void BBdirCirCleR(int Speed, float Kp, float Kd, int direction, char select) {
   int temp = set_position;
   set_position = set_position_r;
@@ -1775,32 +1815,8 @@ void BBdirCirCleR(int Speed, float Kp, float Kd, int direction, char select) {
   set_position = temp;
 }
 
-void FFdirCirCleL(int Speed, float Kp, int direction) {
-  FFdirCirCleL(Speed, Kp, -1.0f, direction);
-}
-
-void FFdirCirCleR(int Speed, float Kp, int direction) {
-  FFdirCirCleR(Speed, Kp, -1.0f, direction);
-}
-
-void BBdirCirCleL(int Speed, float Kp, int direction) {
-  BBdirCirCleL(Speed, Kp, -1.0f, direction);
-}
-
 void BBdirCirCleR(int Speed, float Kp, int direction) {
   BBdirCirCleR(Speed, Kp, -1.0f, direction);
-}
-
-void FFdirCirCleL(int Speed, float Kp, int direction, char select) {
-  FFdirCirCleL(Speed, Kp, -1.0f, direction, select);
-}
-
-void FFdirCirCleR(int Speed, float Kp, int direction, char select) {
-  FFdirCirCleR(Speed, Kp, -1.0f, direction, select);
-}
-
-void BBdirCirCleL(int Speed, float Kp, int direction, char select) {
-  BBdirCirCleL(Speed, Kp, -1.0f, direction, select);
 }
 
 void BBdirCirCleR(int Speed, float Kp, int direction, char select) {

@@ -40,7 +40,7 @@ void setup_robot() {
   SetGyroTurnB(0.75, 0.9, 50, 10, 25.0, 1.0);  // เลี้ยวล้อเดียวถอยหลังด้วยไจโร (turnDegreeB)
   SetGyroSpin(0.75, 0.9, 40, 8, 25.0, 1.0);   // หมุนตัวอยู่กับที่ด้วยไจโร (spinDegree)
   // (kp, kd)
-  SetGyroRun(1.2, 1.5);    // เดินหน้าตรงด้วยไจโร (RunG)
+  SetGyroRun(1.2, 1.5);   // เดินหน้าตรงด้วยไจโร (RunG)
   SetGyroRunB(1.2, 1.5);  // ถอยหลังตรงด้วยไจโร (RunGB)
 
   /******************** GYRO DISTANCE SCALE ********************/

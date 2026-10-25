@@ -54,7 +54,7 @@ float slow_kp_f = 0.014, slow_kd_f = 0.14;
 float slow_kp_b = 0.014, slow_kd_b = 0.14;
 float lf_kp = 0.015, lf_kd = 0.10;  // PID อยู่กับที่ LF()
 float lb_kp = 0.015, lb_kd = 0.10;  // PID อยู่กับที่ LB()
-uint8_t line_centor = 0;  // 0 / 1
+uint8_t line_centor = 0;            // 0 / 1
 
 // ---------- ตำแหน่งเส้น / ช่วงเซนเซอร์ที่ใช้วิ่ง ----------
 int16_t set_position = 7500;  // 0..15000
